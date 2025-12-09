@@ -64,10 +64,9 @@ def verileri_yukle():
 
 df = verileri_yukle()
 
-# --- EXCEL İNDİRME FONKSİYONU (DÜZELTİLDİ) ---
+# --- EXCEL İNDİRME FONKSİYONU ---
 def excel_olustur(df_input):
     output = BytesIO()
-    # BURASI DEĞİŞTİ: engine='openpyxl' yapıldı (Daha garantidir)
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df_input.to_excel(writer, index=False, sheet_name='Report')
     return output.getvalue()
@@ -80,37 +79,63 @@ if not df.empty:
     eksik = [c for c in gerekli if c not in df.columns]
 
     if not eksik:
+        # Veri Tipi Dönüşümleri
         df["Location"] = df["Location"].astype(str)
         df["Item Code"] = df["Item Code"].astype(str)
         df["Quantity"] = pd.to_numeric(df["Quantity"], errors='coerce').fillna(0)
 
-        # Sol Menü
+        # --- SOL MENÜ FİLTRELERİ ---
         st.sidebar.header("🔍 Filter Settings")
         st.sidebar.markdown("---")
         
+        # 1. Lokasyon Seçimi
         tum_lokasyonlar = sorted(list(df["Location"].unique()))
         secilen_yerler = st.sidebar.multiselect("Select Locations:", tum_lokasyonlar)
         
+        # Lokasyona göre ürünleri daralt
         if secilen_yerler:
             mevcut_urunler = df[df["Location"].isin(secilen_yerler)]["Item Code"].unique()
         else:
             mevcut_urunler = df["Item Code"].unique()
             
+        # 2. Ürün Seçimi
         secilen_urunler = st.sidebar.multiselect("Select Items:", sorted(list(mevcut_urunler)))
         
         st.sidebar.markdown("---")
-        st.sidebar.info("💡 **Tip:** Use sidebar to filter data dynamically.")
+        
+        # --- YENİ EKLENEN ARAMA KISMI ---
+        st.sidebar.markdown("**Deep Search**")
+        col_search, col_btn = st.sidebar.columns([4, 1])
+        
+        with col_search:
+            search_term = st.text_input("Arama", placeholder="Kod veya Lokasyon ara...", label_visibility="collapsed")
+        
+        with col_btn:
+            # Butona basılması veya Enter'a basılması text_input ile tetiklenir
+            search_clicked = st.button("🔎", use_container_width=True)
 
-        # Filtreleme
+        # --- FİLTRELEME MANTIĞI ---
         df_filtered = df.copy()
-        if secilen_yerler: df_filtered = df_filtered[df_filtered["Location"].isin(secilen_yerler)]
-        if secilen_urunler: df_filtered = df_filtered[df_filtered["Item Code"].isin(secilen_urunler)]
+        
+        # Sidebar filtrelerini uygula
+        if secilen_yerler: 
+            df_filtered = df_filtered[df_filtered["Location"].isin(secilen_yerler)]
+        if secilen_urunler: 
+            df_filtered = df_filtered[df_filtered["Item Code"].isin(secilen_urunler)]
+            
+        # Arama kutusu doluysa filtrele (Hem Item Code hem Location içinde arar)
+        if search_term:
+            df_filtered = df_filtered[
+                df_filtered["Item Code"].str.contains(search_term, case=False, na=False) |
+                df_filtered["Location"].str.contains(search_term, case=False, na=False)
+            ]
 
+        # --- DASHBOARD GÖSTERİMİ ---
         if not df_filtered.empty:
             
             tab1, tab2 = st.tabs(["📊 Executive Dashboard", "📋 Detailed Inventory"])
 
-            # TAB 1
+            # TAB 1: GRAFİKLER
             with tab1:
                 st.markdown("### 🚀 Key Performance Indicators")
                 total_qty = df_filtered["Quantity"].sum()
@@ -138,7 +163,7 @@ if not df.empty:
                 
                 st.altair_chart(chart, use_container_width=True)
 
-            # TAB 2 (TABLO KISMI - HATA DÜZELTİLDİ)
+            # TAB 2: DETAYLI TABLO
             with tab2:
                 col_header, col_btn = st.columns([4, 1])
                 col_header.markdown("### 📋 Detailed Stock List")
@@ -152,9 +177,8 @@ if not df.empty:
                     use_container_width=True
                 )
 
-                # Progress Bar hatasını önlemek için max değer kontrolü
                 max_stok = int(df["Quantity"].max())
-                if max_stok == 0: max_stok = 1 # Hata önleyici
+                if max_stok == 0: max_stok = 1 
 
                 st.dataframe(
                     df_filtered,
@@ -173,7 +197,7 @@ if not df.empty:
                 )
 
         else:
-            st.warning("⚠️ No data found. Please adjust filters.")
+            st.warning(f"⚠️ '{search_term}' için veri bulunamadı. Lütfen filtreleri kontrol edin.")
     else:
         st.error(f"Missing Headers: {eksik}")
 else:
