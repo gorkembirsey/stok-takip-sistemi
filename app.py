@@ -5,23 +5,62 @@ import altair as alt
 from io import BytesIO
 
 # --- SAYFA AYARLARI ---
-st.set_page_config(page_title="Stryker Inventory Dashboard", layout="wide", page_icon="📊")
+st.set_page_config(page_title="Stryker Inventory Dashboard", layout="wide", page_icon="📦")
 
-# --- CSS İLE STRYKER TEMASI VE SEKME AYARLARI ---
+# --- CSS İLE PREMIUM TASARIM ---
 st.markdown("""
     <style>
-        .block-container {padding-top: 1rem; padding-bottom: 0rem;}
-        h1 {color: #FFC107; text-align: center;}
-        div.stButton > button:first-child {background-color: #FFC107; color: black;}
+        /* Genel Arka Plan ve Font */
+        .block-container {padding-top: 1.5rem; padding-bottom: 1rem;}
         
+        /* Başlık Rengi (Stryker Gold) */
+        h1, h2, h3 {color: #C29B0C;} 
+        
+        /* Buton Tasarımı */
+        div.stButton > button:first-child {
+            background-color: #FFC107; 
+            color: black; 
+            border-radius: 8px; 
+            border: none;
+            font-weight: bold;
+        }
+        div.stButton > button:hover {
+            background-color: #FFD54F;
+            border: none;
+        }
+
         /* Sekme (Tab) Tasarımı */
-        .stTabs [data-baseweb="tab-list"] {gap: 10px;}
-        .stTabs [data-baseweb="tab"] {height: 50px; white-space: pre-wrap; background-color: #f0f2f6; border-radius: 4px 4px 0px 0px;}
-        .stTabs [aria-selected="true"] {background-color: #FFC107; color: black; font-weight: bold;}
+        .stTabs [data-baseweb="tab-list"] {gap: 8px;}
+        .stTabs [data-baseweb="tab"] {
+            height: 45px; 
+            background-color: #ffffff; 
+            border-radius: 6px; 
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .stTabs [aria-selected="true"] {
+            background-color: #FFC107; 
+            color: black; 
+            font-weight: bold;
+            border: none;
+        }
+
+        /* KPI Kartları (Metrics) için Özel CSS */
+        div[data-testid="stMetric"] {
+            background-color: #ffffff;
+            border: 1px solid #f0f0f0;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 2px 2px 8px rgba(0,0,0,0.05);
+            text-align: center;
+        }
     </style>
 """, unsafe_allow_html=True)
 
-st.title("📦 Stryker - Inventory Intelligence")
+# --- BAŞLIK ---
+col_logo, col_title = st.columns([1, 6])
+with col_title:
+    st.title("📦 Stryker - Inventory Intelligence")
 st.markdown("---")
 
 # --- VERİ YÜKLEME ---
@@ -54,112 +93,75 @@ if not df.empty:
     eksik = [c for c in gerekli if c not in df.columns]
 
     if not eksik:
-        # Veri tiplerini ayarla
         df["Location"] = df["Location"].astype(str)
         df["Item Code"] = df["Item Code"].astype(str)
-        
-        # Quantity sütununu sayıya çevir (Hata varsa 0 yap)
         df["Quantity"] = pd.to_numeric(df["Quantity"], errors='coerce').fillna(0)
 
         # --- SOL MENÜ (FİLTRELER) ---
         st.sidebar.header("🔍 Filter Settings")
+        st.sidebar.markdown("---")
 
-        # Lokasyon Seçimi
         tum_lokasyonlar = sorted(list(df["Location"].unique()))
-        secilen_yerler = st.sidebar.multiselect("Select Locations:", tum_lokasyonlar) # Varsayılan boş (hepsi)
+        secilen_yerler = st.sidebar.multiselect("Select Locations:", tum_lokasyonlar)
         
-        # Ürün Seçimi (Akıllı Filtre)
         if secilen_yerler:
             mevcut_urunler = df[df["Location"].isin(secilen_yerler)]["Item Code"].unique()
         else:
             mevcut_urunler = df["Item Code"].unique()
             
         secilen_urunler = st.sidebar.multiselect("Select Items:", sorted(list(mevcut_urunler)))
+        
+        st.sidebar.markdown("---")
+        st.sidebar.info("💡 **Tip:** Use sidebar to filter data dynamically.")
 
         # --- FİLTRELEME MOTORU ---
         df_filtered = df.copy()
-        
-        if secilen_yerler:
-            df_filtered = df_filtered[df_filtered["Location"].isin(secilen_yerler)]
-        
-        if secilen_urunler:
-            df_filtered = df_filtered[df_filtered["Item Code"].isin(secilen_urunler)]
+        if secilen_yerler: df_filtered = df_filtered[df_filtered["Location"].isin(secilen_yerler)]
+        if secilen_urunler: df_filtered = df_filtered[df_filtered["Item Code"].isin(secilen_urunler)]
 
         if not df_filtered.empty:
             
-            # --- SEKMELİ YAPI (TABS) BAŞLANGICI ---
-            tab1, tab2 = st.tabs(["📊 Dashboard", "📋 Detaylı Liste"])
+            # --- SEKMELİ YAPI ---
+            tab1, tab2 = st.tabs(["📊 Executive Dashboard", "📋 Detailed Inventory"])
 
-            # ----------------------------------
-            # SEKME 1: DASHBOARD (Özet ve Grafik)
-            # ----------------------------------
+            # --- TAB 1: DASHBOARD ---
             with tab1:
-                # KPI Kartları
+                st.markdown("### 🚀 Key Performance Indicators")
+                
                 total_qty = df_filtered["Quantity"].sum()
                 total_items = df_filtered["Item Code"].nunique()
                 total_locs = df_filtered["Location"].nunique()
                 
+                # Kart Görünümü (CSS ile güzelleştirildi)
                 kpi1, kpi2, kpi3 = st.columns(3)
-                kpi1.metric("📦 Total Inventory", f"{total_qty:,.0f} Units")
-                kpi2.metric("🏷️ Unique SKUs", f"{total_items} Types")
-                kpi3.metric("📍 Active Locations", f"{total_locs} Locs")
+                kpi1.metric("📦 Total Inventory", f"{total_qty:,.0f}")
+                kpi2.metric("🏷️ Unique SKUs", f"{total_items}")
+                kpi3.metric("📍 Active Locations", f"{total_locs}")
                 
-                st.divider()
-                st.subheader("📊 Stock Distribution (Top 20 Locations)")
+                st.markdown("---")
                 
-                # Grafik Verisi (En çok stoğu olan ilk 20 depo)
+                # Grafik Alanı
+                st.markdown("### 📈 Stock Overview (Top 20 Locations)")
                 chart_data = df_filtered.groupby("Location")["Quantity"].sum().reset_index()
                 chart_data = chart_data.nlargest(20, "Quantity")
 
                 chart = alt.Chart(chart_data).mark_bar(
-                    cornerRadius=5, color="#FFC107"
+                    cornerRadius=6, 
+                    color="#FFC107", # Stryker Sarısı
+                    size=30
                 ).encode(
-                    x=alt.X('Location', sort='-y', title='Location'),
-                    y=alt.Y('Quantity', title='Quantity'),
+                    x=alt.X('Location', sort='-y', title='Location Code'),
+                    y=alt.Y('Quantity', title='Quantity Units'),
                     tooltip=['Location', 'Quantity']
-                ).properties(height=400)
+                ).properties(height=450).configure_axis(
+                    grid=False,
+                    labelFontSize=11,
+                    titleFontSize=13
+                )
                 
                 st.altair_chart(chart, use_container_width=True)
 
-            # ----------------------------------
-            # SEKME 2: DETAYLI LİSTE (Tablo ve İndirme)
-            # ----------------------------------
+            # --- TAB 2: DETAYLI LİSTE ---
             with tab2:
-                col_header, col_btn = st.columns([3, 1])
-                col_header.subheader("📋 Detailed Inventory List")
-                
-                # İndirme Butonu
-                excel_data = excel_olustur(df_filtered)
-                col_btn.download_button(
-                    "📥 Download Excel",
-                    data=excel_data,
-                    file_name="Stryker_Inventory_Report.xlsx",
-                    mime="application/vnd.ms-excel",
-                    use_container_width=True
-                )
-
-                # Gelişmiş Tablo (Progress Bar ile)
-                st.dataframe(
-                    df_filtered,
-                    use_container_width=True,
-                    hide_index=True,
-                    column_config={
-                        "Location": st.column_config.TextColumn("Location", help="Depo Konumu"),
-                        "Item Code": st.column_config.TextColumn("SKU Code", help="Ürün Kodu"),
-                        "Quantity": st.column_config.ProgressColumn(
-                            "Stock Level",
-                            help="Mevcut Stok Adedi",
-                            format="%d",
-                            min_value=0,
-                            max_value=int(df["Quantity"].max()),
-                        ),
-                    }
-                )
-
-        else:
-            st.warning("⚠️ No data found based on selection.")
-    else:
-        st.error(f"Eksik Başlıklar: {eksik}")
-
-else:
-    st.info("👋 Veri bekleniyor... Lütfen sol menüden Excel dosyasını yükleyin.")
+                col_header, col_btn = st.columns([4, 1])
+                col_header.markdown("### 📋 Detailed Stock List")
