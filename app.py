@@ -40,10 +40,7 @@ st.markdown("""
         div.stButton > button {
             width: 100%; border-radius: 6px; font-weight: 600; border: 1px solid #e0e0e0;
         }
-        /* Sarı Buton (Select All vb.) */
-        div.stButton > button:first-child {
-            # background-color: #FFC107; color: black; border: none;
-        }
+        
         /* Özel 'Export' butonu için stil */
         .export-btn button {
             background-color: #2ECC71 !important; color: white !important;
@@ -58,40 +55,51 @@ def excel_olustur(df_input):
         df_input.to_excel(writer, index=False, sheet_name='Report')
     return output.getvalue()
 
-# --- YENİ ÖZELLİK: DETAY MODAL PENCERESİ (DIALOG) ---
+# --- SKU INSPECTOR (POPUP) ---
 @st.dialog("📦 SKU Inspector")
-def show_sku_details(item_code, df_source):
-    # Seçilen ürünün verilerini süz
-    item_data = df_source[df_source["Item Code"] == item_code]
+def show_sku_details(item_code, df_source, threshold_value):
+    # Veriyi süz
+    item_data = df_source[df_source["Item Code"] == item_code].copy()
     
     if not item_data.empty:
-        total_stock = item_data["Quantity"].sum()
-        loc_count = item_data["Location"].nunique()
-        locations = item_data["Location"].unique()
-        abc_class = item_data.iloc[0]["ABC Class"] if "ABC Class" in item_data.columns else "N/A"
+        # Lot Kontrolü
+        if "Lot" not in item_data.columns:
+            item_data["Lot"] = "-" 
         
-        # Üst Bilgi Kartları
+        # Metrik Hesaplamaları
+        total_stock = item_data["Quantity"].sum()
+        
+        # Lot Bilgisi
+        unique_lots = item_data["Lot"].unique()
+        lot_info = unique_lots[0] if len(unique_lots) == 1 else "Karışık (Listeye bkz.)"
+
+        # --- ÜST KARTLAR ---
         c1, c2, c3 = st.columns(3)
-        c1.metric("Total Stock", f"{total_stock:,.0f}")
-        c2.metric("Locations", f"{loc_count}")
-        c3.metric("ABC Class", f"{abc_class}")
+        c1.metric("Mevcut Stok", f"{total_stock:,.0f}")
+        c2.metric("Min. Stok Seviyesi", f"{threshold_value}")
+        c3.metric("Lot Bilgisi", f"{lot_info}")
         
         st.markdown("---")
         
         st.write(f"**Stock Distribution for {item_code}:**")
-        # Basit bir tablo gösterimi
+        
+        # --- TABLO ---
+        item_data["Min_Level"] = threshold_value
+        
+        display_df = item_data[["Location", "Quantity", "Min_Level", "Lot"]]
+        display_df.columns = ["Location", "Mevcut Stok", "Minimum Stok Seviyesi", "Lot"]
+        
         st.dataframe(
-            item_data[["Location", "Quantity", "Status"]],
+            display_df,
             hide_index=True,
             use_container_width=True
         )
         
-        st.markdown(f"*Data retrieved at {datetime.datetime.now().strftime('%H:%M:%S')}*")
+        st.caption(f"Data retrieved at {datetime.datetime.now().strftime('%H:%M:%S')}")
     else:
         st.error("Item details not found.")
 
-# --- SIDEBAR (VERİ YÜKLEME & FİLTRELER) ---
-# Session State
+# --- SIDEBAR ---
 if 'selected_locs' not in st.session_state: st.session_state['selected_locs'] = []
 if 'selected_items' not in st.session_state: st.session_state['selected_items'] = []
 
@@ -114,29 +122,23 @@ with st.sidebar:
 # --- VERİ HAZIRLIĞI ---
 if not df.empty:
     df.columns = df.columns.str.strip()
-    # Veri Tipleme
     df["Location"] = df["Location"].astype(str)
     df["Item Code"] = df["Item Code"].astype(str)
     df["Quantity"] = pd.to_numeric(df["Quantity"], errors='coerce').fillna(0)
     
-    # ABC ve Status Hesapla (Global olarak, modal için lazım)
-    df_sorted = df.sort_values("Quantity", ascending=False)
-    df_sorted["Cum_Sum"] = df_sorted["Quantity"].cumsum()
-    df_sorted["Cum_Perc"] = 100 * df_sorted["Cum_Sum"] / df_sorted["Quantity"].sum()
-    def get_class(x): return "A" if x <= 80 else "B" if x <= 95 else "C"
-    df["ABC Class"] = df_sorted["Cum_Perc"].apply(get_class)
+    if "Lot" not in df.columns:
+        df["Lot"] = "-"
+
+    # Status Hesaplama (ABC Kaldırıldı)
     df["Status"] = df["Quantity"].apply(lambda x: "🔴 Critical" if x <= threshold else "🟢 Healthy")
 
-# --- HEADER & AKSİYON BUTONLARI (TOP BAR) ---
-# Başlık ve Butonu yan yana koyuyoruz
-col_title, col_actions = st.columns([6, 1.5]) # Oranları ayarlayabilirsin
-
+# --- HEADER ---
+col_title, col_actions = st.columns([6, 1.5])
 with col_title:
     st.title("Inventory Intelligence")
 
 with col_actions:
     if not df.empty:
-        # Excel İndirme Butonu (En Tepeye Taşıdık)
         st.markdown('<div class="export-btn">', unsafe_allow_html=True)
         excel_data = excel_olustur(df)
         st.download_button(
@@ -152,9 +154,8 @@ st.markdown("---")
 
 # --- ANA PROGRAM ---
 if not df.empty:
-    # --- SMART FILTERS (SIDEBAR) ---
+    # --- FİLTRELER ---
     with st.sidebar.expander("🔍 Smart Filters", expanded=True):
-        # 1. Lokasyon
         st.markdown("**📍 Filter by Location**")
         tum_lokasyonlar = sorted(list(df["Location"].unique()))
         c1, c2 = st.columns([1, 1])
@@ -166,7 +167,6 @@ if not df.empty:
             st.rerun()
         secilen_yerler = st.multiselect("Select Locations", tum_lokasyonlar, default=st.session_state['selected_locs'], label_visibility="collapsed", key='loc_multiselect')
         
-        # Ürün Listesi Güncelleme
         if secilen_yerler:
             mevcut_urunler = df[df["Location"].isin(secilen_yerler)]["Item Code"].unique()
         else:
@@ -174,7 +174,6 @@ if not df.empty:
         
         st.markdown("---")
         
-        # 2. Ürün
         st.markdown("**🏷️ Filter by Item Code**")
         c3, c4 = st.columns([1, 1])
         if c3.button("Select All", key="item_all"):
@@ -188,10 +187,9 @@ if not df.empty:
         secilen_urunler = st.multiselect("Select Items", sorted(list(mevcut_urunler)), default=valid_defaults, label_visibility="collapsed", key='item_multiselect')
 
         st.markdown("---")
-        # 3. Arama
         search_term = st.text_input("Deep Search", placeholder="Type SKU or Location...", help="Global search")
 
-    # --- FİLTRELEME UYGULA ---
+    # --- FİLTRE UYGULA ---
     df_filtered = df.copy()
     if secilen_yerler: df_filtered = df_filtered[df_filtered["Location"].isin(secilen_yerler)]
     if secilen_urunler: df_filtered = df_filtered[df_filtered["Item Code"].isin(secilen_urunler)]
@@ -201,7 +199,7 @@ if not df.empty:
             df_filtered["Location"].str.contains(search_term, case=False, na=False)
         ]
 
-    # --- DASHBOARD İÇERİĞİ ---
+    # --- DASHBOARD ---
     if not df_filtered.empty:
         
         tab1, tab2 = st.tabs(["📊 Executive Dashboard", "📋 Master Data List"])
@@ -221,59 +219,32 @@ if not df.empty:
             
             st.markdown("###")
 
-            # Charts
-            c_chart1, c_chart2 = st.columns([2, 1])
-            with c_chart1:
-                st.markdown("##### 📈 Volume Analysis")
-                chart_data = df_filtered.groupby("Location")["Quantity"].sum().reset_index().nlargest(15, "Quantity")
-                bar_chart = alt.Chart(chart_data).mark_bar(cornerRadius=5, color="#FFC107").encode(
-                    x=alt.X('Location', sort='-y', title=None), y=alt.Y('Quantity', title='Units'), tooltip=['Location', 'Quantity']
-                ).properties(height=320)
-                st.altair_chart(bar_chart, use_container_width=True)
+            # Charts - SADECE HACİM ANALİZİ KALDI
+            st.markdown("##### 📈 Top 15 Locations by Volume")
+            chart_data = df_filtered.groupby("Location")["Quantity"].sum().reset_index().nlargest(15, "Quantity")
+            bar_chart = alt.Chart(chart_data).mark_bar(cornerRadius=5, color="#FFC107").encode(
+                x=alt.X('Location', sort='-y', title=None), y=alt.Y('Quantity', title='Units'), tooltip=['Location', 'Quantity']
+            ).properties(height=350)
             
-            with c_chart2:
-                st.markdown("##### 🍰 Inventory Mix")
-                abc_counts = df_filtered["ABC Class"].value_counts().reset_index()
-                abc_counts.columns = ["Class", "Count"]
-                pie_chart = alt.Chart(abc_counts).mark_arc(innerRadius=60).encode(
-                    theta=alt.Theta(field="Count", type="quantitative"),
-                    color=alt.Color(field="Class", scale=alt.Scale(domain=['A', 'B', 'C'], range=['#2ECC71', '#F1C40F', '#E74C3C']), legend=None),
-                    tooltip=["Class", "Count"]
-                ).properties(height=320)
-                text = pie_chart.mark_text(align='center', baseline='middle', fontSize=20, fontWeight='bold').encode(text='sum(Count)')
-                st.altair_chart(pie_chart + text, use_container_width=True)
-
-            # Heatmap
-            st.markdown("### 🔥 Stock Density Heatmap")
-            heatmap_data = df_filtered.nlargest(100, 'Quantity') 
-            heatmap = alt.Chart(heatmap_data).mark_rect().encode(
-                x=alt.X('Location:N', title='Location'),
-                y=alt.Y('Item Code:N', title='Item SKU'),
-                color=alt.Color('Quantity:Q', scale=alt.Scale(scheme='goldorange'), title='Qty'),
-                tooltip=['Location', 'Item Code', 'Quantity', 'ABC Class']
-            ).properties(height=400).configure_axis(grid=False)
-            st.altair_chart(heatmap, use_container_width=True)
+            # use_container_width=True ile tam genişlik
+            st.altair_chart(bar_chart, use_container_width=True)
 
         with tab2:
             st.markdown("### Detailed Inventory Report")
             
-            # --- YENİ ÖZELLİK: POPUP (DIALOG) TETİKLEYİCİSİ ---
             col_sel, col_btn = st.columns([3, 1])
             with col_sel:
-                # Kullanıcı detay görmek istediği ürünü buradan seçer
                 item_to_inspect = st.selectbox("🔍 Inspect Specific SKU details:", ["Select an SKU..."] + sorted(list(df_filtered["Item Code"].unique())))
             
             with col_btn:
-                # Butonu aşağı hizalamak için boşluk
                 st.write("") 
                 st.write("")
                 if st.button("Open Details", use_container_width=True):
                     if item_to_inspect != "Select an SKU...":
-                        show_sku_details(item_to_inspect, df)
+                        show_sku_details(item_to_inspect, df, threshold)
                     else:
                         st.warning("Please select an SKU first.")
 
-            # Tablo
             max_stok = int(df["Quantity"].max()) if not df.empty else 100
             st.dataframe(
                 df_filtered,
@@ -281,7 +252,7 @@ if not df.empty:
                 hide_index=True,
                 column_config={
                     "Status": st.column_config.TextColumn("Status", width="small"),
-                    "ABC Class": st.column_config.TextColumn("ABC", width="small"),
+                    # ABC Class Kaldırıldı
                     "Location": st.column_config.TextColumn("Location"),
                     "Item Code": st.column_config.TextColumn("Item Code"),
                     "Quantity": st.column_config.ProgressColumn("On Hand", format="%d", min_value=0, max_value=max_stok),
