@@ -6,30 +6,28 @@ from io import BytesIO
 
 # --- 1. SAYFA YAPILANDIRMASI ---
 st.set_page_config(
-    page_title="Stryker Inventory Hub",
+    page_title="Inventory Intelligence",
     layout="wide",
     page_icon="📦",
     initial_sidebar_state="expanded"
 )
 
-# --- 2. CSS İLE PREMIUM TASARIM ---
+# --- 2. CSS İLE TASARIM AYARLARI ---
 st.markdown("""
     <style>
         .stApp {background-color: #F5F7FA;}
         h1, h2, h3 {color: #2C3E50; font-family: 'Segoe UI', sans-serif;}
         
-        /* Sidebar Düzeni */
+        /* Sidebar */
         [data-testid="stSidebar"] {background-color: #FFFFFF; box-shadow: 2px 0 5px rgba(0,0,0,0.05);}
         
-        /* Metrik Kartları */
+        /* Kartlar */
         div[data-testid="stMetric"] {
             background-color: #FFFFFF; border: none; padding: 20px;
             border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            transition: transform 0.2s;
         }
-        div[data-testid="stMetric"]:hover {transform: translateY(-5px);}
         
-        /* Tab Tasarımı */
+        /* Tablar */
         .stTabs [data-baseweb="tab-list"] {gap: 10px; background-color: transparent;}
         .stTabs [data-baseweb="tab"] {
             height: 50px; background-color: #FFFFFF; border-radius: 8px;
@@ -37,37 +35,37 @@ st.markdown("""
         }
         .stTabs [aria-selected="true"] {background-color: #FFC107 !important; color: black !important; border: none;}
         
-        /* Buton İyileştirmesi */
+        /* Butonlar - Tüm butonları standartlaştır */
         div.stButton > button {
             width: 100%;
             border-radius: 6px;
             font-weight: 600;
+            border: 1px solid #e0e0e0;
         }
-        /* Sarı Buton (Select All vb.) */
+        
+        /* "Select All" vb. butonlar için özel renk */
         div.stButton > button:first-child {
             background-color: #FFC107; 
             color: black; 
             border: none;
         }
-        
-        .streamlit-expanderHeader {font-weight: bold; color: #34495E;}
     </style>
 """, unsafe_allow_html=True)
 
-# --- HEADER ---
+# --- BAŞLIK BÖLÜMÜ (DÜZENLENDİ) ---
 col_logo, col_title = st.columns([0.5, 6])
 with col_title:
-    st.title("📦 Stryker | Inventory Intelligence")
-    st.markdown("<span style='color: #7F8C8D; font-size: 14px;'>Operational Excellence Dashboard • Order Management</span>", unsafe_allow_html=True)
+    st.title("Inventory Intelligence") 
+    # Alt başlık kaldırıldı
 st.markdown("---")
 
-# --- SESSION STATE (Filtre Hafızası) ---
+# --- SESSION STATE ---
 if 'selected_locs' not in st.session_state:
     st.session_state['selected_locs'] = []
 if 'selected_items' not in st.session_state:
     st.session_state['selected_items'] = []
 
-# --- 3. YAN MENÜ (SIDEBAR) ---
+# --- 3. SIDEBAR ---
 with st.sidebar:
     st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Stryker_Corporation_logo.svg/2560px-Stryker_Corporation_logo.svg.png", width=150)
     st.markdown("### Control Panel")
@@ -79,7 +77,6 @@ with st.sidebar:
     df = pd.DataFrame()
     if uploaded_file is not None:
         df = pd.read_excel(uploaded_file)
-        st.toast('Data uploaded successfully!', icon='✅')
     elif os.path.exists('stok.xlsx'):
         df = pd.read_excel('stok.xlsx')
 
@@ -94,7 +91,7 @@ def excel_olustur(df_input):
         df_input.to_excel(writer, index=False, sheet_name='Report')
     return output.getvalue()
 
-# --- ANA PROGRAM AKIŞI ---
+# --- ANA PROGRAM ---
 if not df.empty:
     df.columns = df.columns.str.strip()
     
@@ -102,53 +99,58 @@ if not df.empty:
     eksik = [c for c in gerekli if c not in df.columns]
 
     if not eksik:
+        # Veri Tipleme
         df["Location"] = df["Location"].astype(str)
         df["Item Code"] = df["Item Code"].astype(str)
         df["Quantity"] = pd.to_numeric(df["Quantity"], errors='coerce').fillna(0)
         
-        # --- C) GELİŞMİŞ FİLTRELEME (SIDEBAR DEVAM) ---
+        # --- C) SMART FILTERS (BURASI DÜZENLENDİ) ---
         with st.sidebar.expander("🔍 Smart Filters", expanded=True):
             
-            # --- 1. LOKASYON FİLTRESİ ---
+            # 1. LOKASYON FİLTRESİ
             st.markdown("**📍 Filter by Location**")
             tum_lokasyonlar = sorted(list(df["Location"].unique()))
             
-            c1, c2 = st.columns(2)
-            if c1.button("Select All", key="all_loc"):
+            c1, c2 = st.columns([1, 1]) # Eşit genişlik
+            if c1.button("Select All", key="loc_all"):
                 st.session_state['selected_locs'] = tum_lokasyonlar
-            if c2.button("Clear", key="clear_loc"):
+                st.rerun()
+            if c2.button("Clear", key="loc_clear"):
                 st.session_state['selected_locs'] = []
+                st.rerun()
                 
             secilen_yerler = st.multiselect(
-                "Locations", 
+                "Select Locations", 
                 tum_lokasyonlar,
                 default=st.session_state['selected_locs'],
                 label_visibility="collapsed",
                 key='loc_multiselect'
             )
             
-            # Seçilen Lokasyona Göre Ürünleri Güncelle
+            # Dinamik Ürün Listesi Hazırlığı
             if secilen_yerler:
                 mevcut_urunler = df[df["Location"].isin(secilen_yerler)]["Item Code"].unique()
             else:
                 mevcut_urunler = df["Item Code"].unique()
             
-            st.markdown("---")
+            st.markdown("---") # Ayırıcı Çizgi
             
-            # --- 2. ÜRÜN FİLTRESİ (BURASI EKSİKTİ, ŞİMDİ EKLENDİ) ---
+            # 2. ÜRÜN FİLTRESİ (ITEM CODE) - KESİN GÖRÜNMESİ İÇİN BURADA
             st.markdown("**🏷️ Filter by Item Code**")
             
-            c3, c4 = st.columns(2)
-            if c3.button("Select All", key="all_items"):
+            c3, c4 = st.columns([1, 1]) # Eşit genişlik
+            if c3.button("Select All", key="item_all"):
                 st.session_state['selected_items'] = sorted(list(mevcut_urunler))
-            if c4.button("Clear", key="clear_items"):
+                st.rerun()
+            if c4.button("Clear", key="item_clear"):
                 st.session_state['selected_items'] = []
+                st.rerun()
 
-            # Session State'teki ürünler mevcut listede yoksa temizle (Hata önleyici)
+            # Session State temizliği (Eğer listede olmayan bir seçim kaldıysa)
             valid_defaults = [x for x in st.session_state['selected_items'] if x in mevcut_urunler]
             
             secilen_urunler = st.multiselect(
-                "Items",
+                "Select Items",
                 sorted(list(mevcut_urunler)),
                 default=valid_defaults,
                 label_visibility="collapsed",
@@ -157,29 +159,30 @@ if not df.empty:
 
             st.markdown("---")
             
-            # --- 3. METİN ARAMA ---
+            # 3. ARAMA
             search_term = st.text_input("Deep Search", placeholder="Type SKU or Location...", help="Global search")
 
         # --- FİLTRELEME MANTIĞI ---
         df_filtered = df.copy()
         
-        # 1. Lokasyon Uygula
+        # 1. Lokasyon
         if secilen_yerler: 
             df_filtered = df_filtered[df_filtered["Location"].isin(secilen_yerler)]
         
-        # 2. Ürün Kodu Uygula
+        # 2. Ürün
         if secilen_urunler:
             df_filtered = df_filtered[df_filtered["Item Code"].isin(secilen_urunler)]
             
-        # 3. Arama Kutusu Uygula
+        # 3. Arama
         if search_term:
             df_filtered = df_filtered[
                 df_filtered["Item Code"].str.contains(search_term, case=False, na=False) |
                 df_filtered["Location"].str.contains(search_term, case=False, na=False)
             ]
 
-        # --- ANALİTİK & DASHBOARD ---
+        # --- DASHBOARD GÖRSELLEŞTİRME ---
         if not df_filtered.empty:
+            # ABC ve Kritik Stok Hesabı
             df_sorted = df_filtered.sort_values("Quantity", ascending=False)
             df_sorted["Cum_Sum"] = df_sorted["Quantity"].cumsum()
             df_sorted["Cum_Perc"] = 100 * df_sorted["Cum_Sum"] / df_sorted["Quantity"].sum()
@@ -192,9 +195,11 @@ if not df.empty:
             df_filtered["ABC Class"] = df_sorted["Cum_Perc"].apply(get_class)
             df_filtered["Status"] = df_filtered["Quantity"].apply(lambda x: "🔴 Critical" if x <= threshold else "🟢 Healthy")
 
+            # TABLAR
             tab1, tab2 = st.tabs(["📊 Executive Dashboard", "📋 Master Data List"])
 
             with tab1:
+                # Metrics
                 total_qty = df_filtered["Quantity"].sum()
                 total_sku = df_filtered["Item Code"].nunique()
                 total_loc = df_filtered["Location"].nunique()
@@ -208,6 +213,7 @@ if not df.empty:
                 
                 st.markdown("###")
 
+                # Charts
                 c_chart1, c_chart2 = st.columns([2, 1])
                 with c_chart1:
                     st.markdown("##### 📈 Volume Analysis")
@@ -263,4 +269,4 @@ if not df.empty:
     else:
         st.error(f"Missing Columns: {eksik}")
 else:
-    st.info("👋 Welcome to Stryker Inventory Hub. Please upload your daily stock file.")
+    st.info("👋 Welcome to Inventory Intelligence. Please upload your daily stock file.")
