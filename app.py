@@ -17,23 +17,39 @@ st.markdown("""
     <style>
         .stApp {background-color: #F5F7FA;}
         h1, h2, h3 {color: #2C3E50; font-family: 'Segoe UI', sans-serif;}
+        
+        /* Sidebar Düzeni */
         [data-testid="stSidebar"] {background-color: #FFFFFF; box-shadow: 2px 0 5px rgba(0,0,0,0.05);}
+        
+        /* Metrik Kartları */
         div[data-testid="stMetric"] {
             background-color: #FFFFFF; border: none; padding: 20px;
             border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             transition: transform 0.2s;
         }
         div[data-testid="stMetric"]:hover {transform: translateY(-5px);}
+        
+        /* Tab Tasarımı */
         .stTabs [data-baseweb="tab-list"] {gap: 10px; background-color: transparent;}
         .stTabs [data-baseweb="tab"] {
             height: 50px; background-color: #FFFFFF; border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 1px solid #E0E0E0; font-weight: 600;
         }
         .stTabs [aria-selected="true"] {background-color: #FFC107 !important; color: black !important; border: none;}
-        div.stButton > button:first-child {
-            background-color: #FFC107; color: black; border-radius: 8px;
-            border: none; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        
+        /* Buton İyileştirmesi */
+        div.stButton > button {
+            width: 100%;
+            border-radius: 6px;
+            font-weight: 600;
         }
+        /* Sarı Buton (Select All vb.) */
+        div.stButton > button:first-child {
+            background-color: #FFC107; 
+            color: black; 
+            border: none;
+        }
+        
         .streamlit-expanderHeader {font-weight: bold; color: #34495E;}
     </style>
 """, unsafe_allow_html=True)
@@ -93,25 +109,25 @@ if not df.empty:
         # --- C) GELİŞMİŞ FİLTRELEME (SIDEBAR DEVAM) ---
         with st.sidebar.expander("🔍 Smart Filters", expanded=True):
             
-            # 1. LOKASYON FİLTRESİ
-            st.markdown("**Location Filter**")
+            # --- 1. LOKASYON FİLTRESİ ---
+            st.markdown("**📍 Filter by Location**")
             tum_lokasyonlar = sorted(list(df["Location"].unique()))
             
             c1, c2 = st.columns(2)
-            if c1.button("All Locs", key="all_loc"):
+            if c1.button("Select All", key="all_loc"):
                 st.session_state['selected_locs'] = tum_lokasyonlar
-            if c2.button("Clear Locs", key="clear_loc"):
+            if c2.button("Clear", key="clear_loc"):
                 st.session_state['selected_locs'] = []
                 
             secilen_yerler = st.multiselect(
-                "Select Locations:", 
+                "Locations", 
                 tum_lokasyonlar,
                 default=st.session_state['selected_locs'],
                 label_visibility="collapsed",
                 key='loc_multiselect'
             )
             
-            # Lokasyona göre ürün listesini güncelle
+            # Seçilen Lokasyona Göre Ürünleri Güncelle
             if secilen_yerler:
                 mevcut_urunler = df[df["Location"].isin(secilen_yerler)]["Item Code"].unique()
             else:
@@ -119,28 +135,30 @@ if not df.empty:
             
             st.markdown("---")
             
-            # 2. ÜRÜN FİLTRESİ (YENİ EKLENDİ)
-            st.markdown("**Item Filter**")
+            # --- 2. ÜRÜN FİLTRESİ (BURASI EKSİKTİ, ŞİMDİ EKLENDİ) ---
+            st.markdown("**🏷️ Filter by Item Code**")
             
             c3, c4 = st.columns(2)
-            # Tüm ürünleri seçerken sadece filtrelenmiş listedekileri seçer
-            if c3.button("All Items", key="all_items"):
+            if c3.button("Select All", key="all_items"):
                 st.session_state['selected_items'] = sorted(list(mevcut_urunler))
-            if c4.button("Clear Items", key="clear_items"):
+            if c4.button("Clear", key="clear_items"):
                 st.session_state['selected_items'] = []
 
+            # Session State'teki ürünler mevcut listede yoksa temizle (Hata önleyici)
+            valid_defaults = [x for x in st.session_state['selected_items'] if x in mevcut_urunler]
+            
             secilen_urunler = st.multiselect(
-                "Select Item Codes:",
+                "Items",
                 sorted(list(mevcut_urunler)),
-                default=[x for x in st.session_state['selected_items'] if x in mevcut_urunler],
+                default=valid_defaults,
                 label_visibility="collapsed",
                 key='item_multiselect'
             )
 
             st.markdown("---")
             
-            # 3. METİN ARAMA
-            search_term = st.text_input("Deep Search", placeholder="Type SKU or Loc...", help="Global search")
+            # --- 3. METİN ARAMA ---
+            search_term = st.text_input("Deep Search", placeholder="Type SKU or Location...", help="Global search")
 
         # --- FİLTRELEME MANTIĞI ---
         df_filtered = df.copy()
@@ -149,7 +167,7 @@ if not df.empty:
         if secilen_yerler: 
             df_filtered = df_filtered[df_filtered["Location"].isin(secilen_yerler)]
         
-        # 2. Ürün Kodu Uygula (YENİ)
+        # 2. Ürün Kodu Uygula
         if secilen_urunler:
             df_filtered = df_filtered[df_filtered["Item Code"].isin(secilen_urunler)]
             
@@ -193,7 +211,6 @@ if not df.empty:
                 c_chart1, c_chart2 = st.columns([2, 1])
                 with c_chart1:
                     st.markdown("##### 📈 Volume Analysis")
-                    # Eğer çok fazla lokasyon varsa grafik bozulmasın diye ilk 15'i alıyoruz
                     chart_data = df_filtered.groupby("Location")["Quantity"].sum().reset_index().nlargest(15, "Quantity")
                     
                     bar_chart = alt.Chart(chart_data).mark_bar(
