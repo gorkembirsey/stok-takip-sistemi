@@ -10,13 +10,8 @@ st.set_page_config(page_title="Stryker Inventory Dashboard", layout="wide", page
 # --- CSS İLE PREMIUM TASARIM ---
 st.markdown("""
     <style>
-        /* Genel Arka Plan ve Font */
         .block-container {padding-top: 1.5rem; padding-bottom: 1rem;}
-        
-        /* Başlık Rengi (Stryker Gold) */
         h1, h2, h3 {color: #C29B0C;} 
-        
-        /* Buton Tasarımı */
         div.stButton > button:first-child {
             background-color: #FFC107; 
             color: black; 
@@ -24,12 +19,6 @@ st.markdown("""
             border: none;
             font-weight: bold;
         }
-        div.stButton > button:hover {
-            background-color: #FFD54F;
-            border: none;
-        }
-
-        /* Sekme (Tab) Tasarımı */
         .stTabs [data-baseweb="tab-list"] {gap: 8px;}
         .stTabs [data-baseweb="tab"] {
             height: 45px; 
@@ -44,8 +33,6 @@ st.markdown("""
             font-weight: bold;
             border: none;
         }
-
-        /* KPI Kartları (Metrics) için Özel CSS */
         div[data-testid="stMetric"] {
             background-color: #ffffff;
             border: 1px solid #f0f0f0;
@@ -77,16 +64,16 @@ def verileri_yukle():
 
 df = verileri_yukle()
 
-# --- EXCEL İNDİRME FONKSİYONU ---
+# --- EXCEL İNDİRME FONKSİYONU (DÜZELTİLDİ) ---
 def excel_olustur(df_input):
     output = BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+    # BURASI DEĞİŞTİ: engine='openpyxl' yapıldı (Daha garantidir)
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df_input.to_excel(writer, index=False, sheet_name='Report')
     return output.getvalue()
 
 # --- ANA PROGRAM ---
 if not df.empty:
-    # 1. Temizlik ve Formatlama
     df.columns = df.columns.str.strip()
     
     gerekli = ["Location", "Quantity", "Item Code"]
@@ -97,10 +84,10 @@ if not df.empty:
         df["Item Code"] = df["Item Code"].astype(str)
         df["Quantity"] = pd.to_numeric(df["Quantity"], errors='coerce').fillna(0)
 
-        # --- SOL MENÜ (FİLTRELER) ---
+        # Sol Menü
         st.sidebar.header("🔍 Filter Settings")
         st.sidebar.markdown("---")
-
+        
         tum_lokasyonlar = sorted(list(df["Location"].unique()))
         secilen_yerler = st.sidebar.multiselect("Select Locations:", tum_lokasyonlar)
         
@@ -114,54 +101,80 @@ if not df.empty:
         st.sidebar.markdown("---")
         st.sidebar.info("💡 **Tip:** Use sidebar to filter data dynamically.")
 
-        # --- FİLTRELEME MOTORU ---
+        # Filtreleme
         df_filtered = df.copy()
         if secilen_yerler: df_filtered = df_filtered[df_filtered["Location"].isin(secilen_yerler)]
         if secilen_urunler: df_filtered = df_filtered[df_filtered["Item Code"].isin(secilen_urunler)]
 
         if not df_filtered.empty:
             
-            # --- SEKMELİ YAPI ---
             tab1, tab2 = st.tabs(["📊 Executive Dashboard", "📋 Detailed Inventory"])
 
-            # --- TAB 1: DASHBOARD ---
+            # TAB 1
             with tab1:
                 st.markdown("### 🚀 Key Performance Indicators")
-                
                 total_qty = df_filtered["Quantity"].sum()
                 total_items = df_filtered["Item Code"].nunique()
                 total_locs = df_filtered["Location"].nunique()
                 
-                # Kart Görünümü (CSS ile güzelleştirildi)
                 kpi1, kpi2, kpi3 = st.columns(3)
                 kpi1.metric("📦 Total Inventory", f"{total_qty:,.0f}")
                 kpi2.metric("🏷️ Unique SKUs", f"{total_items}")
                 kpi3.metric("📍 Active Locations", f"{total_locs}")
                 
                 st.markdown("---")
-                
-                # Grafik Alanı
                 st.markdown("### 📈 Stock Overview (Top 20 Locations)")
+                
                 chart_data = df_filtered.groupby("Location")["Quantity"].sum().reset_index()
                 chart_data = chart_data.nlargest(20, "Quantity")
 
                 chart = alt.Chart(chart_data).mark_bar(
-                    cornerRadius=6, 
-                    color="#FFC107", # Stryker Sarısı
-                    size=30
+                    cornerRadius=6, color="#FFC107", size=30
                 ).encode(
                     x=alt.X('Location', sort='-y', title='Location Code'),
                     y=alt.Y('Quantity', title='Quantity Units'),
                     tooltip=['Location', 'Quantity']
-                ).properties(height=450).configure_axis(
-                    grid=False,
-                    labelFontSize=11,
-                    titleFontSize=13
-                )
+                ).properties(height=450).configure_axis(grid=False)
                 
                 st.altair_chart(chart, use_container_width=True)
 
-            # --- TAB 2: DETAYLI LİSTE ---
+            # TAB 2 (TABLO KISMI - HATA DÜZELTİLDİ)
             with tab2:
                 col_header, col_btn = st.columns([4, 1])
                 col_header.markdown("### 📋 Detailed Stock List")
+                
+                excel_data = excel_olustur(df_filtered)
+                col_btn.download_button(
+                    "📥 Download Excel",
+                    data=excel_data,
+                    file_name="Stryker_Inventory_Report.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True
+                )
+
+                # Progress Bar hatasını önlemek için max değer kontrolü
+                max_stok = int(df["Quantity"].max())
+                if max_stok == 0: max_stok = 1 # Hata önleyici
+
+                st.dataframe(
+                    df_filtered,
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "Location": st.column_config.TextColumn("Location", help="Warehouse Location"),
+                        "Item Code": st.column_config.TextColumn("SKU Code", help="Product Item Code"),
+                        "Quantity": st.column_config.ProgressColumn(
+                            "Stock Level",
+                            format="%d",
+                            min_value=0,
+                            max_value=max_stok,
+                        ),
+                    }
+                )
+
+        else:
+            st.warning("⚠️ No data found. Please adjust filters.")
+    else:
+        st.error(f"Missing Headers: {eksik}")
+else:
+    st.info("👋 Welcome! Please upload your 'stok.xlsx' file to start.")
