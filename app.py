@@ -2,114 +2,159 @@ import streamlit as st
 import pandas as pd
 import os
 import altair as alt
+from io import BytesIO
 
 # --- SAYFA AYARLARI ---
-st.set_page_config(page_title="Stock Tracking", layout="wide")
+st.set_page_config(page_title="Stryker Pro Dashboard", layout="wide", page_icon="📊")
 
-# Başlık
-st.title("📦 Company Stock List")
+# --- CSS İLE GÖRSELLİK (LOGO VE RENKLER) ---
+# Buraya Stryker sarısını/altın rengini entegre ediyoruz
+st.markdown("""
+    <style>
+        .block-container {padding-top: 1rem; padding-bottom: 0rem;}
+        h1 {color: #FFC107; text-align: center;}
+        div.stButton > button:first-child {background-color: #FFC107; color: black;}
+    </style>
+""", unsafe_allow_html=True)
 
-# --- EXCEL OKUMA ---
-def verileri_getir():
-    if os.path.exists('stok.xlsx'):
+st.title("📦 Stryker - Inventory Intelligence")
+st.markdown("---")
+
+# --- VERİ YÜKLEME VE OKUMA ---
+# Önce kullanıcı dosya yükledi mi ona bakar, yoksa GitHub'daki stok.xlsx'i okur
+def verileri_yukle():
+    st.sidebar.header("📂 Data Source")
+    uploaded_file = st.sidebar.file_uploader("Upload Daily Excel", type=["xlsx"])
+    
+    if uploaded_file is not None:
+        return pd.read_excel(uploaded_file)
+    elif os.path.exists('stok.xlsx'):
         return pd.read_excel('stok.xlsx')
     else:
         return pd.DataFrame()
 
-df = verileri_getir()
+df = verileri_yukle()
 
-# --- EKRAN TASARIMI ---
+# --- EXCEL İNDİRME FONKSİYONU ---
+def excel_olustur(df_input):
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df_input.to_excel(writer, index=False, sheet_name='Report')
+    return output.getvalue()
+
+# --- ANA PROGRAM ---
 if not df.empty:
-    # 1. Temizlik
+    # 1. TEMİZLİK VE TİP DÖNÜŞÜMÜ
     df.columns = df.columns.str.strip()
+    
+    # Gerekli başlıklar kontrolü
+    gerekli = ["Location", "Quantity", "Item Code"]
+    eksik = [c for c in gerekli if c not in df.columns]
 
-    # 2. Başlık Kontrolü
-    gerekli_basliklar = ["Location", "Quantity", "Item Code"]
-    eksik_basliklar = [col for col in gerekli_basliklar if col not in df.columns]
+    if not eksik:
+        # Tipleri string yapalım ki filtrelerde hata çıkmasın
+        df["Location"] = df["Location"].astype(str)
+        df["Item Code"] = df["Item Code"].astype(str)
 
-    if not eksik_basliklar:
-        # --- SOL MENÜ (Filtre ve Ayarlar) ---
-        st.sidebar.header("🔍 Filter & Settings")
+        # --- SOL MENÜ (FİLTRELER) ---
+        st.sidebar.header("🔍 Smart Filters")
+
+        # ÇOKLU SEÇİM (MULTI-SELECT) ÖZELLİĞİ
+        # Lokasyonlar
+        tum_lokasyonlar = sorted(list(df["Location"].unique()))
+        secilen_yerler = st.sidebar.multiselect("Select Locations:", tum_lokasyonlar, default=tum_lokasyonlar[:1])
         
-        # 1. Lokasyon Seçimi
-        yerler = ["All"] + list(df["Location"].unique())
-        secilen_yer = st.sidebar.selectbox("Select Location:", yerler)
-
-        # 2. Ürün Seçimi
-        urunler = ["All"] + list(df["Item Code"].unique())
-        secilen_urun = st.sidebar.selectbox("Select Item:", urunler)
-        
-        # 3. Grafik Aç/Kapa
-        st.sidebar.write("---") 
-        grafigi_goster = st.sidebar.checkbox("📊 Show Chart", value=True) 
-        
-        # --- FİLTRELEME MANTIĞI ---
-        gosterilecek_tablo = df
-
-        if secilen_yer != "All":
-            gosterilecek_tablo = gosterilecek_tablo[gosterilecek_tablo["Location"] == secilen_yer]
-        
-        if secilen_urun != "All":
-            gosterilecek_tablo = gosterilecek_tablo[gosterilecek_tablo["Item Code"] == secilen_urun]
-
-        # Grafik Başlığı
-        grafik_basligi = f"📊 Stock Status: {secilen_yer} / {secilen_urun}"
-
-        # --- SONUÇ KONTROLÜ ---
-        if not gosterilecek_tablo.empty:
-            
-            # --- METRİKLER ---
-            col1, col2 = st.columns(2)
-            toplam_adet = gosterilecek_tablo["Quantity"].sum()
-            cesit_sayisi = gosterilecek_tablo["Item Code"].nunique()
-
-            col1.metric("Total Item Quantity", f"{toplam_adet} Units")
-            col2.metric("Total Item Code", f"{cesit_sayisi} Types")
-
-            # --- GELİŞMİŞ GRAFİK ---
-            if grafigi_goster:
-                st.divider()
-                st.subheader(grafik_basligi)
-                
-                # Veriyi lokasyona göre grupla
-                grafik_verisi = gosterilecek_tablo.groupby("Location")["Quantity"].sum().reset_index()
-
-                chart = alt.Chart(grafik_verisi).mark_bar(
-                    cornerRadiusTopLeft=10,
-                    cornerRadiusTopRight=10,
-                    size=60
-                ).encode(
-                    x=alt.X('Location', title='Location', axis=alt.Axis(labelAngle=0)),
-                    y=alt.Y('Quantity', title='Quantity', scale=alt.Scale(domainMin=0)),
-                    color=alt.Color('Location', legend=None),
-                    # DÜZELTİLEN KISIM BURASI: 'Item Code' listeden çıkarıldı
-                    tooltip=['Location', 'Quantity'] 
-                ).properties(
-                    height=400
-                ).configure_axis(
-                    grid=True,
-                    labelFontSize=12,
-                    titleFontSize=14
-                )
-
-                st.altair_chart(chart, use_container_width=True)
-
-            # --- TABLO ---
-            st.divider()
-            st.subheader("📋 Stock List")
-            st.dataframe(gosterilecek_tablo, use_container_width=True, hide_index=True)
-        
+        # Ürünler (Seçilen lokasyona göre daraltılmış)
+        if secilen_yerler:
+            mevcut_urunler = df[df["Location"].isin(secilen_yerler)]["Item Code"].unique()
         else:
-            st.warning(f"⚠️ No records found for Location: **{secilen_yer}** and Item: **{secilen_urun}**")
+            mevcut_urunler = df["Item Code"].unique()
+            
+        secilen_urunler = st.sidebar.multiselect("Select Items:", sorted(list(mevcut_urunler)))
 
+        # Grafik Ayarı
+        show_chart = st.sidebar.toggle("Show Analytics Chart", value=True)
+
+        # --- FİLTRELEME MOTORU ---
+        df_filtered = df.copy()
+        
+        # Eğer lokasyon seçildiyse filtrele (Boşsa hepsi gelir)
+        if secilen_yerler:
+            df_filtered = df_filtered[df_filtered["Location"].isin(secilen_yerler)]
+        
+        # Eğer ürün seçildiyse filtrele
+        if secilen_urunler:
+            df_filtered = df_filtered[df_filtered["Item Code"].isin(secilen_urunler)]
+
+        # --- KPI KARTLARI (EN ÜST) ---
+        if not df_filtered.empty:
+            total_qty = df_filtered["Quantity"].sum()
+            total_items = df_filtered["Item Code"].nunique()
+            total_locs = df_filtered["Location"].nunique()
+            
+            # 3'lü kolon yapısı
+            kpi1, kpi2, kpi3 = st.columns(3)
+            kpi1.metric("📦 Total Inventory", f"{total_qty:,.0f} Units")
+            kpi2.metric("🏷️ Unique SKUs", f"{total_items} Types")
+            kpi3.metric("📍 Active Locations", f"{total_locs} Locs")
+            
+            st.divider()
+
+            # --- GRAFİK BÖLÜMÜ ---
+            if show_chart:
+                col_chart, col_empty = st.columns([2, 1]) # Grafiği sola yasla, sağ taraf boş kalsın
+                
+                with col_chart:
+                    st.subheader("📊 Stock Distribution (Top 20)")
+                    
+                    # Veriyi hazırla ve Top 20 al
+                    chart_data = df_filtered.groupby("Location")["Quantity"].sum().reset_index()
+                    chart_data = chart_data.nlargest(20, "Quantity")
+
+                    chart = alt.Chart(chart_data).mark_bar(
+                        cornerRadius=5, color="#FFC107" # Stryker sarısına yakın renk
+                    ).encode(
+                        x=alt.X('Location', sort='-y', title='Location'),
+                        y=alt.Y('Quantity', title=None),
+                        tooltip=['Location', 'Quantity']
+                    ).properties(height=350)
+                    
+                    st.altair_chart(chart, use_container_width=True)
+
+            # --- GELİŞMİŞ TABLO (DATA BARS) ---
+            st.subheader("📋 Detailed Inventory")
+            
+            # İndirme Butonu
+            excel_data = excel_olustur(df_filtered)
+            st.download_button(
+                "📥 Download Report as Excel",
+                data=excel_data,
+                file_name="Stryker_Inventory_Report.xlsx",
+                mime="application/vnd.ms-excel"
+            )
+
+            # Tablo Görselleştirme (Column Config)
+            st.dataframe(
+                df_filtered,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Location": st.column_config.TextColumn("Location", help="Depo Konumu"),
+                    "Item Code": st.column_config.TextColumn("SKU Code", help="Ürün Kodu"),
+                    "Quantity": st.column_config.ProgressColumn(
+                        "Stock Level",
+                        help="Mevcut Stok Adedi",
+                        format="%d",
+                        min_value=0,
+                        max_value=int(df["Quantity"].max()), # En büyük değere göre çubuğu ayarlar
+                    ),
+                }
+            )
+
+        else:
+            st.warning("⚠️ No data found based on selection.")
     else:
-        st.error("Error: Excel headers do not match!")
-        st.warning(f"Please check your Excel file for these headers: {', '.join(gerekli_basliklar)}")
-
-    # Yenileme Butonu
-    st.sidebar.write("---")
-    if st.sidebar.button("🔄 Refresh List"):
-        st.rerun()
+        st.error(f"Eksik Başlıklar: {eksik}")
 
 else:
-    st.warning("Data not found. Please check 'stok.xlsx'.")
+    st.info("👋 Veri bekleniyor... Lütfen sol menüden Excel dosyasını yükleyin veya GitHub'a 'stok.xlsx' ekleyin.")
