@@ -4,7 +4,7 @@ import altair as alt
 from io import BytesIO
 
 # --- SAYFA AYARLARI ---
-st.set_page_config(page_title="Akıllı Analiz Pro", layout="wide", page_icon="🚀")
+st.set_page_config(page_title="Stryker Analiz Pro", layout="wide", page_icon="🚀")
 
 # --- CSS (Görünüm) ---
 st.markdown("""
@@ -31,14 +31,18 @@ with st.sidebar:
         width=150)
     st.header("📂 Veri Yükleme")
     uploaded_file = st.file_uploader("Excel dosyasını buraya bırakın", type=["xlsx"])
-    st.caption("Sistem metin ve sayıları otomatik algılar.")
+    st.caption("Noktalama işaretleri otomatik temizlenir.")
 
 # --- ANA PROGRAM ---
 if uploaded_file:
     try:
         # Veri Okuma
         df = pd.read_excel(uploaded_file)
-        df.columns = df.columns.str.strip()
+
+        # --- KRİTİK DÜZELTME: SÜTUN İSİMLERİNİ TEMİZLEME ---
+        # Altair kütüphanesi '.' ve '()' karakterlerini sevmez. Bunları temizliyoruz.
+        df.columns = df.columns.astype(str).str.replace(r'[.\(\)]', '', regex=True).str.strip()
+        # Örnek: "Kasım 1. Hafta" -> "Kasım 1 Hafta" olur.
 
         # --- OTOMATİK TİP ANALİZİ ---
         numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
@@ -56,6 +60,7 @@ if uploaded_file:
                 break
 
         # Varsayılan Y Ekseni (Sayısal)
+        # Genelde son sütunlar toplamlardır, onları seçelim
         default_y = [numeric_cols[-1]] if numeric_cols else []
 
         st.title(f"📊 Akıllı Analiz Paneli: {uploaded_file.name}")
@@ -71,49 +76,50 @@ if uploaded_file:
                 # X Ekseni (Tek seçim)
                 x_axis = c1.selectbox("Gruplama (X Ekseni):", text_cols, index=text_cols.index(default_x))
 
-                # Y Ekseni (Çoklu Seçim - Yeni Özellik)
+                # Y Ekseni (Çoklu Seçim)
                 y_axis = c2.multiselect("Karşılaştırılacak Değerler (Y Ekseni):", numeric_cols, default=default_y)
 
             if not y_axis:
                 st.warning("Lütfen analiz için en az bir sayısal sütun seçin.")
             else:
                 # --- HESAPLAMALAR ---
-                # Seçilen sayısal sütunların toplamını alarak grupla
                 # 1. Ana Gruplama
                 grouped_df = df.groupby(x_axis)[y_axis].sum().reset_index()
 
                 # KPI Hesaplamaları
-                # Toplam Değer (Seçilen tüm sütunların toplamı)
                 total_val = grouped_df[y_axis].sum().sum()
-                # Benzersiz Kayıt Sayısı
                 unique_count = grouped_df[x_axis].nunique()
+
                 # Ortalama (Satır başına düşen ortalama değer)
+                # Seçilen tüm sütunların toplamını satır sayısına bölüyoruz
                 avg_val = total_val / unique_count if unique_count > 0 else 0
 
-                # Lideri bulmak için geçici toplam sütunu
+                # Lideri bulmak için geçici toplam
                 grouped_df['Total_Temp'] = grouped_df[y_axis].sum(axis=1)
                 leader_row = grouped_df.loc[grouped_df['Total_Temp'].idxmax()]
                 leader_name = leader_row[x_axis]
                 leader_val = leader_row['Total_Temp']
 
-                # --- KPI KARTLARI (YENİ ORTALAMA EKLENDİ) ---
+                # --- KPI KARTLARI ---
                 k1, k2, k3, k4 = st.columns(4)
                 k1.metric("Genel Toplam", f"{total_val:,.0f}")
                 k2.metric(f"Benzersiz {x_axis}", f"{unique_count}")
-                k3.metric("Ortalama Ürün Adedi", f"{avg_val:,.1f}")  # Yeni İstek
+                k3.metric("Ortalama Ürün Adedi", f"{avg_val:,.1f}")
                 k4.metric("🏆 Lider", f"{str(leader_name)[:15]}..", f"{leader_val:,.0f}")
 
                 st.markdown("###")
 
                 # --- GRAFİK MANTIĞI ---
 
-                # Senaryo 1: TEK BİR SÜTUN SEÇİLDİYSE (Bar veya Pie Seçeneği)
+                # Senaryo 1: TEK BİR SÜTUN SEÇİLDİYSE
                 if len(y_axis) == 1:
                     selected_metric = y_axis[0]
-                    chart_type = st.radio("Grafik Türü:", ["Sütun Grafiği (Bar)", "Pasta Grafiği (Pie)"],
-                                          horizontal=True)
 
-                    # Veriyi hazırla (Top 20)
+                    c_chart_type, c_dummy = st.columns([1, 3])
+                    chart_type = c_chart_type.radio("Grafik Türü:", ["Sütun Grafiği (Bar)", "Pasta Grafiği (Pie)"],
+                                                    horizontal=True)
+
+                    # Top 20 Veri
                     chart_data = grouped_df.nlargest(20, selected_metric)
 
                     if "Sütun" in chart_type:
@@ -124,7 +130,7 @@ if uploaded_file:
                             tooltip=[x_axis, selected_metric]
                         ).properties(height=400)
                     else:
-                        chart = alt.Chart(chart_data).mark_arc(innerRadius=50).encode(
+                        chart = alt.Chart(chart_data).mark_arc(innerRadius=60).encode(
                             theta=alt.Theta(selected_metric, stack=True),
                             color=alt.Color(x_axis, sort='descending'),
                             tooltip=[x_axis, selected_metric],
@@ -133,34 +139,33 @@ if uploaded_file:
 
                     st.altair_chart(chart, use_container_width=True)
 
-                # Senaryo 2: BİRDEN FAZLA SÜTUN SEÇİLDİYSE (Karşılaştırma Modu)
+                # Senaryo 2: KARŞILAŞTIRMA MODU (Multi-Select)
                 else:
-                    st.info("ℹ️ Birden fazla veri seçtiğiniz için 'Karşılaştırmalı Sütun Grafiği' gösteriliyor.")
+                    st.info(f"ℹ️ {len(y_axis)} farklı veri seti karşılaştırılıyor.")
 
-                    # Pandas Melt ile veriyi "Uzun Format"a çevir (Altair için gerekli)
+                    # Veriyi Uzun Format'a çevir (Altair için)
                     melted_df = grouped_df.melt(id_vars=[x_axis], value_vars=y_axis, var_name='Kategori',
                                                 value_name='Değer')
 
-                    # Toplam değeri en yüksek olan ilk 15 kalemi filtrele (Grafik karışmasın)
+                    # En büyük 15 kalemi filtrele (Grafik karışmasın)
                     top_items = grouped_df.nlargest(15, 'Total_Temp')[x_axis].tolist()
                     melted_filtered = melted_df[melted_df[x_axis].isin(top_items)]
 
                     # Gruplanmış Bar Grafiği
                     chart = alt.Chart(melted_filtered).mark_bar().encode(
-                        x=alt.X(x_axis, sort=None, title=x_axis),  # X ekseni (Ürünler)
+                        x=alt.X(x_axis, sort=None, title=x_axis),
                         y=alt.Y('Değer', title='Miktar'),
-                        color=alt.Color('Kategori', title='Veri Tipi'),  # Renkler (Kasım, Aralık vb.)
-                        xOffset='Kategori',  # Yan yana barlar için
+                        color=alt.Color('Kategori', title='Dönem / Veri', scale=alt.Scale(scheme='category10')),
+                        xOffset='Kategori',  # Yan yana barlar
                         tooltip=[x_axis, 'Kategori', 'Değer']
                     ).properties(height=400)
 
                     st.altair_chart(chart, use_container_width=True)
 
-                    # --- YENİ İSTEK: TOPLAM KARŞILAŞTIRMA (GENEL BAKIŞ) ---
+                    # --- GENEL TOPLAM ÖZETİ ---
                     st.markdown("---")
-                    st.subheader("📈 Genel Toplam Karşılaştırması")
+                    st.subheader("📈 Seçilen Dönemlerin Toplam Karşılaştırması")
 
-                    # Sadece seçilen sütunların toplamlarını hesapla
                     totals_data = df[y_axis].sum().reset_index()
                     totals_data.columns = ['Veri Seti', 'Genel Toplam']
 
@@ -179,7 +184,8 @@ if uploaded_file:
                     st.download_button("📥 Tabloyu İndir", data=excel_data, file_name="Analiz.xlsx")
 
     except Exception as e:
-        st.error(f"Beklenmeyen bir hata oluştu: {e}")
+        st.error(f"Bir hata oluştu: {e}")
+        st.warning("Excel dosyasındaki sütun isimlerini kontrol edin.")
 
 else:
     st.info("👆 Analiz için Excel dosyasını yükleyin.")
