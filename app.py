@@ -10,25 +10,68 @@ st.set_page_config(page_title="Stock Control Intelligence", layout="wide", page_
 
 DATA_FILE_PATH = "master_stryker_data.xlsx"
 
-# --- CSS ---
+# --- CSS (GÖRSEL DÜZEN - EN BEĞENDİĞİN HALİ) ---
 st.markdown("""
     <style>
         .stApp {background-color: #F4F6F9;}
-        .alert-card {padding: 20px; border-radius: 10px; color: white; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; text-align: center;}
-        .bg-red {background-color: #d32f2f; border-left: 10px solid #b71c1c;}
-        .bg-orange {background-color: #f57c00; border-left: 10px solid #e65100;}
-        .bg-gray {background-color: #616161; border-left: 10px solid #212121;}
-        div[data-testid="stMetric"] {background-color: #ffffff !important; border: 1px solid #e0e0e0; border-left: 8px solid #FFC107 !important; padding: 15px; border-radius: 8px;}
-        thead th {background-color: #f0f2f6 !important; color: #31333F !important; font-size: 14px !important; font-weight: 600 !important; border-bottom: 2px solid #e0e0e0 !important;}
+
+        /* ALERT KARTLARI (Kutucuklar) */
+        .alert-card {
+            padding: 15px; 
+            border-radius: 8px; 
+            color: white; 
+            font-weight: bold; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+            margin-bottom: 15px; 
+            text-align: center;
+        }
+        .bg-red {background-color: #d32f2f; border-left: 6px solid #b71c1c;}
+        .bg-orange {background-color: #f57c00; border-left: 6px solid #e65100;}
+        .bg-gray {background-color: #616161; border-left: 6px solid #212121;}
+
+        .alert-number {font-size: 28px; display: block;}
+        .alert-text {font-size: 14px; opacity: 0.9;}
+
+        /* KPI KARTLARI (Sarı Şeritli) */
+        div[data-testid="stMetric"] {
+            background-color: #ffffff !important; 
+            border: 1px solid #e0e0e0; 
+            border-left: 6px solid #FFC107 !important; 
+            padding: 10px; 
+            border-radius: 6px;
+        }
+
+        /* TABLO BAŞLIKLARI */
+        thead th {
+            background-color: #f0f2f6 !important; 
+            color: #31333F !important; 
+            font-size: 14px !important; 
+            font-weight: 600 !important; 
+            border-bottom: 2px solid #e0e0e0 !important;
+        }
         tbody tr:nth-of-type(even) {background-color: #f9f9f9;}
+
+        /* SEKMELER */
         .stTabs [data-baseweb="tab-list"] {gap: 8px;}
-        .stTabs [data-baseweb="tab"] {height: 45px; background-color: white; border-radius: 4px; font-weight: 600; border: 1px solid #ddd;}
-        .stTabs [aria-selected="true"] {background-color: #fff !important; color: #000 !important; border-bottom: 4px solid #FFC107 !important;}
+        .stTabs [data-baseweb="tab"] {
+            height: 40px; 
+            background-color: white; 
+            border-radius: 4px; 
+            font-weight: 600; 
+            border: 1px solid #ddd;
+        }
+        .stTabs [aria-selected="true"] {
+            background-color: #fff !important; 
+            color: #000 !important; 
+            border-bottom: 3px solid #FFC107 !important;
+        }
+
+        /* İNDİRME ve FORM BUTONLARI */
         .stDownloadButton button {width: 100%; border: 1px solid #28a745; color: #28a745;}
         div[data-testid="stForm"] button {width: 100%; background-color: #FFC107; color: black; font-weight: bold; border: none;}
 
-        /* Temizle butonu stili */
-        button[kind="secondary"] {width: 100%; border: 1px solid #ccc; color: #333;}
+        /* TEMİZLE BUTONU (Sade) */
+        button[kind="secondary"] {width: 100%;}
     </style>
 """, unsafe_allow_html=True)
 
@@ -68,7 +111,6 @@ def convert_df_single(df):
 
 # --- RESET FONKSİYONU ---
 def reset_filters():
-    # Session state içindeki widget key'lerini sıfırlıyoruz
     st.session_state.franchise_key = []
     st.session_state.dynamic_val_key = []
     st.session_state.search_key = ""
@@ -160,8 +202,8 @@ if not df_stok.empty:
 # --- SIDEBAR FİLTRELEME ---
 st.sidebar.header("🎯 Filtre Paneli")
 
-# RESET BUTONU
-st.sidebar.button("🧹 TÜMÜNÜ TEMİZLE / SIFIRLA", on_click=reset_filters, type="secondary")
+# RESET BUTONU (Sade ve ikonusuz)
+st.sidebar.button("Filtreleri Temizle", on_click=reset_filters, type="secondary")
 
 with st.sidebar.form("filter_form"):
     all_franchises = sorted([x for x in list(set(item_franchise_map.values())) if str(x) != 'nan'])
@@ -237,7 +279,7 @@ if submitted:
     if search_query: msg.append(f"Arama: '{search_query}'")
     if msg: st.info(f"✅ Filtreler: **{' + '.join(msg)}**")
 
-# KPI
+# KPI (Eski, düzgün hizalı hali)
 c1, c2, c3, c4 = st.columns(4)
 c1.metric("📦 Toplam Stok", f"{f_stok['Qty On Hand'].sum() if not f_stok.empty else 0:,.0f}")
 c2.metric("🌍 Bekleyen Sipariş", f"{f_venlo['Ordered Qty Order UOM'].sum() if not f_venlo.empty else 0:,.0f}")
@@ -305,30 +347,30 @@ with tab_alert:
     st.markdown("#### ⚠️ Operasyonel Risk Paneli")
     red_risk = f_stok[f_stok['Risk Durumu'] == "🔴 Kritik (<6 Ay)"] if not f_stok.empty else pd.DataFrame()
 
+    # KUTUCUKLAR (Eski, hizalı düzen)
     a1, a2, a3 = st.columns(3)
     with a1:
         st.markdown(
-            f"""<div class="alert-card bg-red"><span class="alert-number">{len(red_risk)}</span><span class="alert-text">Kritik Stok</span></div>""",
+            f"""<div class="alert-card bg-red"><span class="alert-number">{len(red_risk)}</span><span class="alert-text">Kritik Stok (<6 Ay)</span></div>""",
             unsafe_allow_html=True)
     with a2:
         cnt_org = f_stok[f_stok['Risk Durumu'] == "🟠 Riskli (6-12 Ay)"].shape[0] if not f_stok.empty else 0
         st.markdown(
-            f"""<div class="alert-card bg-orange"><span class="alert-number">{cnt_org}</span><span class="alert-text">Riskli Stok</span></div>""",
+            f"""<div class="alert-card bg-orange"><span class="alert-number">{cnt_org}</span><span class="alert-text">Riskli Stok (6-12 Ay)</span></div>""",
             unsafe_allow_html=True)
     with a3:
         st.markdown(
             f"""<div class="alert-card bg-gray"><span class="alert-number">{len(f_out)}</span><span class="alert-text">Stock Out</span></div>""",
             unsafe_allow_html=True)
 
-    c_t, c_b = st.columns([4, 1])
-    with c_t:
+    # TABLO VE İNDİRME BUTONU (Eski düzen: Tablo solda geniş, Buton sağda dar)
+    c_tbl, c_btn = st.columns([4, 1])
+    with c_tbl:
         st.markdown("##### 🕵️‍♂️ Risk Analiz Tablosu")
         if not f_stok.empty:
             df_sorted = f_stok.sort_values("Days_To_Expire")
 
 
-            # --- RENKLENDİRME LİMİTİ KALDIRILDI ---
-            # Her zaman renklendirme yapar.
             def style_rows(row):
                 if "🔴" in str(row['Risk Durumu']):
                     return ['background-color: #ffebee; color: #b71c1c'] * len(row)
@@ -340,13 +382,12 @@ with tab_alert:
 
 
             show_cols = ["Item No", "Location", "Qty On Hand", "Expire Date", "Risk Durumu", "Franchise Description"]
-            # Satır sayısı çok olsa bile renklendirme çalışacak
             st.dataframe(df_sorted[[c for c in show_cols if c in df_sorted.columns]].style.apply(style_rows, axis=1),
                          use_container_width=True, hide_index=True)
         else:
             st.info("Veri yok.")
 
-    with c_b:
+    with c_btn:
         if not red_risk.empty:
-            st.write("")
+            st.write("")  # Hizalama için boşluk
             st.download_button("📥 Kritik İndir", data=convert_df_single(red_risk), file_name="Kritik_Risk.xlsx")
