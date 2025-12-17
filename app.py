@@ -43,20 +43,18 @@ if uploaded_file:
 
         # --- VERİ HAZIRLIĞI ---
 
+        target_col = 'SS Coverage (W/O Consignment)'  # Hedef sütun ismi
+
         # 1. GENERAL SHEET
         df_gen = sheets.get("General", pd.DataFrame())
         if not df_gen.empty:
             df_gen.columns = df_gen.columns.str.strip()
-            # Item No'yu string yap
             if 'Item No' in df_gen.columns:
                 df_gen['Item No'] = df_gen['Item No'].astype(str).str.strip()
 
-            # --- GÜNCELLEME 1: YÜZDESEL FORMAT ---
-            target_col = 'SS Coverage (W/O Consignment)'
+            # Yüzdesel Dönüşüm (General)
             if target_col in df_gen.columns:
-                # Önce sayıya çevir (Hataları NaN yap)
                 df_gen[target_col] = pd.to_numeric(df_gen[target_col], errors='coerce')
-                # 100 ile çarpıp yuvarla (Sadece sayısal kalması için, görüntüde % ekleyeceğiz)
                 df_gen[target_col] = (df_gen[target_col] * 100).fillna(0)
 
         # 2. STOCK OUT SHEET
@@ -65,6 +63,11 @@ if uploaded_file:
             df_out.columns = df_out.columns.str.strip()
             if 'Item No' in df_out.columns:
                 df_out['Item No'] = df_out['Item No'].astype(str).str.strip()
+
+            # --- DÜZELTME BURADA: Yüzdesel Dönüşüm (Stock Out) ---
+            if target_col in df_out.columns:
+                df_out[target_col] = pd.to_numeric(df_out[target_col], errors='coerce')
+                df_out[target_col] = (df_out[target_col] * 100).fillna(0)
 
         # 3. VENLO ORDERS SHEET
         df_venlo = sheets.get("Venlo Orders", pd.DataFrame())
@@ -90,7 +93,6 @@ if uploaded_file:
             if 'Item No' in df_stok.columns:
                 df_stok['Item No'] = df_stok['Item No'].astype(str).str.strip()
 
-            # Miktar alanını sayıya çevir
             if 'Qty On Hand' in df_stok.columns:
                 df_stok['Qty On Hand'] = pd.to_numeric(df_stok['Qty On Hand'], errors='coerce').fillna(0)
 
@@ -137,22 +139,22 @@ if uploaded_file:
         with tab1:
             st.subheader("Genel Ürün Listesi")
             if not df_gen.empty:
-                # Tablo gösterimi ve formatlama
                 st.dataframe(
                     df_gen,
                     use_container_width=True,
                     hide_index=True,
                     column_config={
+                        # DÜZELTME: Başlık orijinal kalıyor, format % oluyor.
                         "SS Coverage (W/O Consignment)": st.column_config.NumberColumn(
-                            "SS Kapsam %",
-                            format="%.1f%%"  # Yüzdeli gösterim
+                            "SS Coverage (W/O Consignment)",
+                            format="%.1f%%"
                         )
                     }
                 )
             else:
                 st.info("Veri yok.")
 
-        # TAB 2: STOK (GÜNCELLENEN GRAFİK)
+        # TAB 2: STOK
         with tab2:
             st.subheader("Depo Lokasyon Detayları")
             if not df_stok.empty:
@@ -160,10 +162,7 @@ if uploaded_file:
 
                 with col_chart:
                     if 'Location' in df_stok.columns and 'Qty On Hand' in df_stok.columns:
-                        # --- GÜNCELLEME 2: İLK 12 LOKASYON ---
-                        # Grupla ve Topla
                         loc_summ = df_stok.groupby('Location')['Qty On Hand'].sum().reset_index()
-                        # Sırala ve İlk 12'yi al
                         loc_summ = loc_summ.sort_values('Qty On Hand', ascending=False).head(12)
 
                         st.markdown("##### 🏆 En Yoğun 12 Lokasyon")
@@ -182,7 +181,7 @@ if uploaded_file:
             else:
                 st.warning("Stok verisi bulunamadı.")
 
-        # Diğer Tablar (Aynı Kalıyor)
+        # TAB 3: VENLO
         with tab3:
             st.subheader("Venlo Açık Siparişler")
             if not df_venlo.empty:
@@ -190,6 +189,7 @@ if uploaded_file:
             else:
                 st.info("Veri yok.")
 
+        # TAB 4: YOLDAKİ
         with tab4:
             st.subheader("Sevkiyat / Gümrük Durumu")
             if not df_yolda.empty:
@@ -197,10 +197,22 @@ if uploaded_file:
             else:
                 st.info("Veri yok.")
 
+        # TAB 5: STOCK OUT
         with tab5:
             st.subheader("Kritik Stok Seviyeleri")
             if not df_out.empty:
-                st.dataframe(df_out, use_container_width=True, hide_index=True)
+                st.dataframe(
+                    df_out,
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        # DÜZELTME: Buraya da aynı konfigürasyon eklendi
+                        "SS Coverage (W/O Consignment)": st.column_config.NumberColumn(
+                            "SS Coverage (W/O Consignment)",
+                            format="%.1f%%"
+                        )
+                    }
+                )
             else:
                 st.success("Veri yok.")
 
