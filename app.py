@@ -15,7 +15,6 @@ DATA_FILE_PATH = "master_stryker_data.xlsx"
 st.markdown("""
     <style>
         .stApp {background-color: #F4F6F9;}
-        /* Alert, KPI, Tablo stilleri (Aynen Korundu) */
         .alert-card {padding: 20px; border-radius: 10px; color: white; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; text-align: center;}
         .bg-red {background-color: #d32f2f; border-left: 10px solid #b71c1c;}
         .bg-orange {background-color: #f57c00; border-left: 10px solid #e65100;}
@@ -75,11 +74,26 @@ with st.sidebar:
 # --- DOSYA KONTROLÜ ---
 if os.path.exists(DATA_FILE_PATH):
     current_file = DATA_FILE_PATH
-    mod_time = datetime.datetime.fromtimestamp(os.path.getmtime(DATA_FILE_PATH)).strftime('%Y-%m-%d %H:%M')
+    mod_time = datetime.datetime.fromtimestamp(os.path.getmtime(DATA_FILE_PATH)).strftime('%d.%m.%Y %H:%M')
     st.sidebar.caption(f"📅 Son Güncelleme: {mod_time}")
 else:
     st.info("👋 Sistemde veri yok. Lütfen yönetici girişi yapıp dosya yükleyin.")
     st.stop()
+
+
+# --- YARDIMCI: TARİH FORMATLAYICI (GG.AA.YYYY) ---
+def format_turkish_date(df, columns):
+    """Verilen sütunları GG.AA.YYYY formatına çevirir ve saati siler."""
+    for col in columns:
+        if col in df.columns:
+            # Önce datetime objesine çevir (Hataları yoksay)
+            df[col] = pd.to_datetime(df[col], errors='coerce')
+            # Sonra istenen string formatına çevir (GG.AA.YYYY)
+            df[col] = df[col].dt.strftime('%d.%m.%Y')
+            # NaT (Hatalı tarih) olanları boş bırak veya tire koy
+            df[col] = df[col].fillna('')
+    return df
+
 
 # --- ANA PROGRAM ---
 if current_file:
@@ -123,19 +137,32 @@ if current_file:
         if not df_out.empty and target_col in df_out.columns:
             df_out[target_col] = pd.to_numeric(df_out[target_col], errors='coerce') * 100
 
+        # --- VENLO (Tarih Formatlama Dahil) ---
         df_venlo = process_df("Venlo Orders", 'Item Code')
+        # İstenen Tarih Sütunları
+        venlo_date_cols = ['Line Creation Date', 'ETA', 'Request Date', 'Line Promise Date']
+        df_venlo = format_turkish_date(df_venlo, venlo_date_cols)
+
+        # --- YOLDAKİ (Tarih Formatlama Dahil) ---
         df_yolda = process_df("Yoldaki İthalatlar", 'Ordered Item Number')
+        # İstenen Tarih Sütunları
+        yolda_date_cols = ['Shipment Date', 'ETA']
+        df_yolda = format_turkish_date(df_yolda, yolda_date_cols)
 
+        # --- STOK (Tarih Formatlama Dahil) ---
         df_stok = process_df("Stok", 'Item Number')
-        if not df_stok.empty and 'Qty On Hand' in df_stok.columns:
-            df_stok['Qty On Hand'] = pd.to_numeric(df_stok['Qty On Hand'], errors='coerce').fillna(0)
-
-        # RISK ANALİZİ
         if not df_stok.empty:
+            if 'Qty On Hand' in df_stok.columns:
+                df_stok['Qty On Hand'] = pd.to_numeric(df_stok['Qty On Hand'], errors='coerce').fillna(0)
+
+            # Risk Analizi ve Tarih Formatlama
             if 'Expire' in df_stok.columns:
+                # Hesaplama için önce orijinal datetime tutuyoruz
                 df_stok['Expire_Obj'] = pd.to_datetime(df_stok['Expire'], errors='coerce')
                 df_stok['Days_To_Expire'] = (df_stok['Expire_Obj'] - today).dt.days
-                df_stok['Expire Date'] = df_stok['Expire_Obj'].dt.date
+
+                # Görüntüleme için GG.AA.YYYY yapıyoruz
+                df_stok['Expire Date'] = df_stok['Expire_Obj'].dt.strftime('%d.%m.%Y').fillna('')
 
 
                 def get_risk_score(days):
@@ -151,47 +178,30 @@ if current_file:
                 df_stok['Risk Durumu'] = df_stok['Days_To_Expire'].apply(get_risk_score)
             else:
                 df_stok['Risk Durumu'] = "⚪ Tarih Yok"
-                df_stok['Expire Date'] = None
+                df_stok['Expire Date'] = ""
 
-        # --- SIDEBAR: DİNAMİK ÇOKLU FİLTRE MOTORU ---
+        # --- SIDEBAR FİLTRELERİ ---
         with filter_placeholder:
             st.header("🎯 Gelişmiş Filtreleme")
 
-            # 1. Sabit Franchise Filtresi (En üstte kalsın)
             all_franchises = sorted(list(set(item_franchise_map.values()))) if item_franchise_map else []
             all_franchises = [x for x in all_franchises if str(x) != 'nan']
             selected_franchises = st.multiselect("İş Birimi (Franchise):", options=all_franchises, placeholder="Tümü")
 
             st.markdown("---")
-
-            # 2. DİNAMİK SEÇİCİ (Magic happens here)
             st.markdown("#### ⚡ Çoklu Veri Seçimi")
 
-            # Filtrelemek istediğimiz mantıklı sütunların listesi (İngilizce/Excel başlıkları)
-            # Buraya filtrelemek istediğiniz her sütun adını ekleyebilirsiniz.
-            filterable_columns = [
-                'Item No',
-                'Location',
-                'Customer PO',
-                'Order Number',
-                'Item Description',
-                'Risk Durumu'
-            ]
-
+            filterable_columns = ['Item No', 'Location', 'Customer PO', 'Order Number', 'Item Description',
+                                  'Risk Durumu']
             selected_filter_col = st.selectbox("1. Kriter Seçin:", filterable_columns)
 
-            # Seçilen kritere göre TÜM tablolardan o sütunun benzersiz değerlerini topla
             unique_values = set()
-
-            # Tüm dataframeleri gez ve eğer o sütun varsa değerlerini al
             all_dfs = [df_gen, df_stok, df_venlo, df_yolda, df_out]
             for d in all_dfs:
                 if not d.empty and selected_filter_col in d.columns:
                     unique_values.update(d[selected_filter_col].dropna().astype(str).unique())
 
             sorted_values = sorted(list(unique_values))
-
-            # Çoklu Seçim Kutusu (Excel'den yapıştırılmaya uygun)
             selected_dynamic_values = st.multiselect(
                 f"2. {selected_filter_col} Seçin/Yapıştırın:",
                 options=sorted_values,
@@ -199,32 +209,23 @@ if current_file:
             )
 
             st.markdown("---")
-            search_query = st.text_input("🔍 Global Arama (Metin):", placeholder="Herhangi bir veri...")
+            search_query = st.text_input("🔍 Global Arama:", placeholder="Herhangi bir veri...")
 
 
-        # --- FİLTRE UYGULAMA MOTORU ---
+        # --- FİLTRE MOTORU ---
         def apply_filters(df):
             if df.empty: return df
             temp_df = df.copy()
-
-            # 1. Franchise
             if selected_franchises and 'Franchise Description' in temp_df.columns:
                 temp_df = temp_df[temp_df['Franchise Description'].isin(selected_franchises)]
-
-            # 2. Dinamik Çoklu Filtre (YENİ)
-            # Eğer seçilen kriter bu tabloda varsa ve kullanıcı seçim yaptıysa filtrele
             if selected_dynamic_values and selected_filter_col in temp_df.columns:
-                # astype(str) yaparak sayı/metin uyuşmazlığını önlüyoruz
                 temp_df = temp_df[temp_df[selected_filter_col].astype(str).isin(selected_dynamic_values)]
-
-            # 3. Global Metin Arama
             if search_query:
                 mask = pd.Series([False] * len(temp_df))
                 for col in temp_df.columns:
                     mask = mask | temp_df[col].astype(str).str.lower().str.contains(search_query.lower(), regex=False,
                                                                                     na=False)
                 temp_df = temp_df[mask]
-
             return temp_df
 
 
@@ -252,7 +253,6 @@ if current_file:
         # --- DASHBOARD ---
         st.title("Stock Control Intelligence")
 
-        # Filtre Özeti
         filters_applied = []
         if selected_franchises: filters_applied.append(f"Franchise ({len(selected_franchises)})")
         if selected_dynamic_values: filters_applied.append(f"{selected_filter_col} ({len(selected_dynamic_values)})")
