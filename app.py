@@ -4,38 +4,58 @@ import altair as alt
 from io import BytesIO
 
 # --- SAYFA YAPILANDIRMASI ---
-# Sayfa sekmesinde görünen isim güncellendi
 st.set_page_config(page_title="Stock Control Intelligence", layout="wide", page_icon="📦")
 
-# --- CSS AYARLARI (GÖRSELLİK BURADA) ---
+# --- CSS AYARLARI (GÖRSEL DÜZENLEMELER) ---
 st.markdown("""
     <style>
-        .stApp {background-color: #F5F7FA;}
+        /* Genel Arka Plan */
+        .stApp {background-color: #F8F9FA;}
 
-        /* Tablo Başlıklarını (Header) Renklendirme */
+        /* 1. TABLO BAŞLIKLARI (HEADER) - SADE VE ŞIK */
         thead tr th:first-child {display:none}
         thead th {
-            background-color: #FFC107 !important; /* Stryker Gold */
-            color: black !important;
+            background-color: #f0f2f6 !important; /* Göz yormayan açık gri */
+            color: #31333F !important; /* Okunabilir koyu gri yazı */
             font-size: 14px !important;
+            font-weight: 600 !important;
             text-align: center !important;
+            border-bottom: 2px solid #e0e0e0 !important;
         }
 
-        /* Tablo Satırları (Zebra Efekti) */
+        /* 2. TABLO SATIRLARI (Zebra Efekti - Daha Soft) */
         tbody tr:nth-of-type(odd) {
             background-color: #ffffff;
         }
         tbody tr:nth-of-type(even) {
-            background-color: #fffdf0; /* Çok hafif sarımsı */
+            background-color: #f9f9f9; /* Çok hafif gri */
         }
 
-        /* Tab Sekmeleri */
-        .stTabs [data-baseweb="tab-list"] {gap: 10px;}
-        .stTabs [data-baseweb="tab"] {height: 45px; background-color: white; border-radius: 5px; font-weight: bold; border: 1px solid #ddd;}
-        .stTabs [aria-selected="true"] {background-color: #FFC107 !important; color: black !important; border-color: #FFC107 !important;}
+        /* 3. SEKMELER (TABS) - PROFESYONEL */
+        .stTabs [data-baseweb="tab-list"] {gap: 8px;}
+        .stTabs [data-baseweb="tab"] {
+            height: 40px;
+            background-color: white;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #555;
+            border: 1px solid #eee;
+        }
+        .stTabs [aria-selected="true"] {
+            background-color: #ffffff !important;
+            color: #000 !important;
+            border-bottom: 3px solid #FFC107 !important; /* Sarı sadece alt çizgide detay */
+            border-top: none; border-left: none; border-right: none;
+        }
 
-        /* KPI Kartları */
-        div[data-testid="stMetric"] {background-color: #ffffff; border-radius: 10px; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-left: 5px solid #FFC107;}
+        /* 4. KPI KARTLARI */
+        div[data-testid="stMetric"] {
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border: 1px solid #eee;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -50,10 +70,10 @@ with st.sidebar:
     st.markdown("---")
     st.header("🔍 Gelişmiş Arama")
     search_query = st.text_input("Arama Yap:", placeholder="Item No, Description, PO veya Lokasyon...")
-    st.caption("Not: Bu alana yazdığınız kelime tüm sütunlarda (Kod, Açıklama, Sipariş No vb.) aranır.")
+    st.caption("Not: Bu alana yazdığınız kelime tüm sütunlarda aranır.")
 
     if search_query:
-        st.info(f"Aranan Kelime: **{search_query}**")
+        st.info(f"Aranan: **{search_query}**")
         if st.button("Temizle"):
             st.rerun()
 
@@ -65,7 +85,6 @@ if uploaded_file:
         sheets = {k.strip(): v for k, v in xls.items()}
 
         # --- VERİ HAZIRLIĞI ---
-
         target_col = 'SS Coverage (W/O Consignment)'
 
         # 1. GENERAL SHEET
@@ -109,7 +128,7 @@ if uploaded_file:
             if 'Qty On Hand' in df_stok.columns: df_stok['Qty On Hand'] = pd.to_numeric(df_stok['Qty On Hand'],
                                                                                         errors='coerce').fillna(0)
 
-        # --- GELİŞMİŞ FİLTRELEME (MULTI-SEARCH) ---
+        # --- GELİŞMİŞ FİLTRELEME ---
         if search_query:
             sq = search_query.lower()
 
@@ -129,9 +148,7 @@ if uploaded_file:
             df_yolda = filter_df(df_yolda, ['Item No', 'Item Description', 'Order No'])
             df_stok = filter_df(df_stok, ['Item No', 'Location'])
 
-        # --- DASHBOARD GÖRÜNÜMÜ ---
-
-        # 1. Başlık Güncellemesi
+        # --- DASHBOARD ---
         st.title("Stock Control Intelligence")
 
         # KPI Kartları
