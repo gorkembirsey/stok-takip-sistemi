@@ -12,26 +12,28 @@ st.markdown("""
     <style>
         .stApp {background-color: #F4F6F9;}
 
-        /* ALERT CENTER STİLİ */
-        .alert-box-red {
-            padding: 15px; border-radius: 8px; background-color: #ffebee; 
-            border-left: 5px solid #d32f2f; color: #b71c1c; font-weight: bold;
+        /* ALERT KUTUCUKLARI (Yeni Sekme İçin) */
+        .alert-card {
+            padding: 20px; border-radius: 10px; color: white; font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; text-align: center;
         }
-        .alert-box-orange {
-            padding: 15px; border-radius: 8px; background-color: #fff3e0; 
-            border-left: 5px solid #f57c00; color: #e65100; font-weight: bold;
-        }
+        .bg-red {background-color: #d32f2f; border-left: 10px solid #b71c1c;}
+        .bg-orange {background-color: #f57c00; border-left: 10px solid #e65100;}
+        .bg-gray {background-color: #616161; border-left: 10px solid #212121;}
 
-        /* KPI KARTLARI */
+        .alert-number {font-size: 32px; display: block;}
+        .alert-text {font-size: 16px; opacity: 0.9;}
+
+        /* KPI KARTLARI (Sarı Şeritli - Ana Ekran) */
         div[data-testid="stMetric"] {
             background-color: #ffffff !important;
             border: 1px solid #e0e0e0;
-            border-left: 6px solid #FFC107 !important;
+            border-left: 8px solid #FFC107 !important;
             padding: 15px; border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
 
-        /* TABLOLAR */
+        /* TABLO BAŞLIKLARI (Soft Gri) */
         thead th {
             background-color: #f0f2f6 !important; color: #31333F !important;
             font-size: 14px !important; font-weight: 600 !important;
@@ -41,8 +43,8 @@ st.markdown("""
 
         /* SEKMELER */
         .stTabs [data-baseweb="tab-list"] {gap: 8px;}
-        .stTabs [data-baseweb="tab"] {height: 40px; background-color: white; border-radius: 4px; font-weight: 600; border: 1px solid #ddd;}
-        .stTabs [aria-selected="true"] {background-color: #fff !important; color: #000 !important; border-bottom: 3px solid #FFC107 !important;}
+        .stTabs [data-baseweb="tab"] {height: 45px; background-color: white; border-radius: 4px; font-weight: 600; border: 1px solid #ddd;}
+        .stTabs [aria-selected="true"] {background-color: #fff !important; color: #000 !important; border-bottom: 4px solid #FFC107 !important;}
     </style>
 """, unsafe_allow_html=True)
 
@@ -103,7 +105,7 @@ if uploaded_file:
             df_yolda.rename(columns={'Ordered Item Number': 'Item No'}, inplace=True)
             if 'Item No' in df_yolda.columns: df_yolda['Item No'] = df_yolda['Item No'].astype(str).str.strip()
 
-        # STOK (Burada SKT Analizi Yapacağız)
+        # STOK & RISK ANALİZİ
         df_stok = sheets.get("Stok", pd.DataFrame())
         if not df_stok.empty:
             df_stok.columns = df_stok.columns.str.strip()
@@ -112,12 +114,9 @@ if uploaded_file:
             if 'Qty On Hand' in df_stok.columns: df_stok['Qty On Hand'] = pd.to_numeric(df_stok['Qty On Hand'],
                                                                                         errors='coerce').fillna(0)
 
-            # --- 🔥 EXPIRY RISK SCORE MOTORU ---
+            # --- 🔥 SKT MOTORU ---
             if 'Expire' in df_stok.columns:
-                # Tarih formatını zorla
                 df_stok['Expire_Date'] = pd.to_datetime(df_stok['Expire'], errors='coerce')
-
-                # Gün farkını hesapla
                 df_stok['Days_To_Expire'] = (df_stok['Expire_Date'] - today).dt.days
 
 
@@ -156,45 +155,7 @@ if uploaded_file:
         # --- 3. DASHBOARD GÖRÜNÜMÜ ---
         st.title("Stock Control Intelligence")
 
-        # --- 🔔 ALERT CENTER (AKILLI UYARILAR) ---
-        with st.expander("🔔 Alert Center (Uyarı Merkezi)", expanded=True):
-            # Kritik Verileri Hesapla
-            critical_expiry = df_stok[df_stok['Risk Durumu'] == "🔴 Kritik (<6 Ay)"].shape[0] if not df_stok.empty else 0
-            warning_expiry = df_stok[df_stok['Risk Durumu'] == "🟠 Riskli (6-12 Ay)"].shape[
-                0] if not df_stok.empty else 0
-            stock_outs = len(df_out)
-
-            col_a1, col_a2, col_a3 = st.columns(3)
-
-            with col_a1:
-                st.markdown(f"""
-                    <div class="alert-box-red">
-                    🚨 {critical_expiry} Ürün SKT Riski Taşıyor (<6 Ay)
-                    </div>
-                """, unsafe_allow_html=True)
-                if critical_expiry > 0:
-                    with st.popover("Detayları Gör"):
-                        st.dataframe(
-                            df_stok[df_stok['Risk Durumu'] == "🔴 Kritik (<6 Ay)"][['Item No', 'Expire', 'Location']],
-                            hide_index=True)
-
-            with col_a2:
-                st.markdown(f"""
-                    <div class="alert-box-orange">
-                    ⚠️ {warning_expiry} Ürün Yakın Takipte (6-12 Ay)
-                    </div>
-                """, unsafe_allow_html=True)
-
-            with col_a3:
-                st.markdown(f"""
-                    <div class="alert-box-red" style="border-left-color: #333; color: #333; background-color: #f5f5f5;">
-                    📉 {stock_outs} Ürün Stock Out Durumunda
-                    </div>
-                """, unsafe_allow_html=True)
-
-        st.markdown("###")
-
-        # KPI KARTLARI
+        # ANA KPI KARTLARI (HEADER)
         qty_hand = df_stok['Qty On Hand'].sum() if not df_stok.empty else 0
         qty_order = df_venlo['Ordered Qty Order UOM'].sum() if not df_venlo.empty else 0
         qty_ship = df_yolda['Qty Shipped'].sum() if not df_yolda.empty else 0
@@ -207,16 +168,84 @@ if uploaded_file:
 
         st.markdown("###")
 
-        # --- SEKMELER ---
-        tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        # --- SEKMELER (ALERT CENTER EKLENDİ) ---
+        tab_alert, tab1, tab2, tab3, tab4, tab5 = st.tabs([
+            "🔔 Alert Center",  # Yeni Sekme
             "📋 General",
-            "📍 Stok (Risk Analizi)",
+            "📍 Stok (Depo)",
             "🌍 Venlo Orders",
             "🚚 Yoldaki İthalatlar",
             "🚨 Stock Out"
         ])
 
-        with tab1:
+        # --- YENİ SEKME: ALERT CENTER ---
+        with tab_alert:
+            st.markdown("#### ⚠️ Operasyonel Risk Paneli")
+
+            # Risk Hesaplamaları
+            count_red = df_stok[df_stok['Risk Durumu'] == "🔴 Kritik (<6 Ay)"].shape[0] if not df_stok.empty else 0
+            count_orange = df_stok[df_stok['Risk Durumu'] == "🟠 Riskli (6-12 Ay)"].shape[0] if not df_stok.empty else 0
+            count_out = len(df_out)
+
+            # Renkli Kutucuklar
+            ac1, ac2, ac3 = st.columns(3)
+            with ac1:
+                st.markdown(f"""
+                    <div class="alert-card bg-red">
+                        <span class="alert-number">{count_red}</span>
+                        <span class="alert-text">Ürün SKT Riski Taşıyor (<6 Ay)</span>
+                    </div>
+                """, unsafe_allow_html=True)
+            with ac2:
+                st.markdown(f"""
+                    <div class="alert-card bg-orange">
+                        <span class="alert-number">{count_orange}</span>
+                        <span class="alert-text">Ürün Yakın Takipte (6-12 Ay)</span>
+                    </div>
+                """, unsafe_allow_html=True)
+            with ac3:
+                st.markdown(f"""
+                    <div class="alert-card bg-gray">
+                        <span class="alert-number">{count_out}</span>
+                        <span class="alert-text">📉 Ürün Stock Out Durumunda</span>
+                    </div>
+                """, unsafe_allow_html=True)
+
+            st.markdown("---")
+            st.markdown("##### 🕵️‍♂️ Stok Detayı ve Risk Puanı Analizi")
+
+            if not df_stok.empty:
+                # Risk Durumuna Göre Sıralama (Kritikler en üste)
+                df_sorted = df_stok.sort_values(by="Days_To_Expire", ascending=True)
+
+
+                # Satır Renklendirme Fonksiyonu
+                def style_risk_rows(row):
+                    val = str(row['Risk Durumu'])
+                    if "🔴" in val:
+                        return ['background-color: #ffebee; color: #b71c1c'] * len(row)
+                    elif "🟠" in val:
+                        return ['background-color: #fff3e0; color: #e65100'] * len(row)
+                    elif "🟢" in val:
+                        return ['background-color: #e8f5e9; color: #1b5e20'] * len(row)
+                    return [''] * len(row)
+
+
+                # Sütun sırasını düzenle (Okunabilirlik için)
+                cols_to_show = ["Item No", "Location", "Qty On Hand", "Expire", "Risk Durumu"]
+                final_df = df_sorted[cols_to_show] if set(cols_to_show).issubset(df_sorted.columns) else df_sorted
+
+                st.dataframe(
+                    final_df.style.apply(style_risk_rows, axis=1),
+                    use_container_width=True,
+                    hide_index=True
+                )
+            else:
+                st.info("Risk analizi için stok verisi bulunamadı.")
+
+        # --- DİĞER SEKMELER (ESKİ HALİYLE) ---
+
+        with tab1:  # General
             if not df_gen.empty:
                 st.dataframe(df_gen, use_container_width=True, hide_index=True,
                              column_config={
@@ -225,65 +254,38 @@ if uploaded_file:
             else:
                 st.info("Veri yok.")
 
-        with tab2:
+        with tab2:  # Stok
             if not df_stok.empty:
-                c_chart, c_data = st.columns([1, 2])
-
+                c_chart, c_data = st.columns([1, 1])
                 with c_chart:
-                    # Risk Pasta Grafiği
-                    risk_counts = df_stok['Risk Durumu'].value_counts().reset_index()
-                    risk_counts.columns = ['Risk', 'Adet']
-
-                    st.markdown("##### ⏳ SKT Risk Dağılımı")
-                    base = alt.Chart(risk_counts).encode(theta=alt.Theta("Adet", stack=True))
-                    pie = base.mark_arc(outerRadius=120).encode(
-                        color=alt.Color("Risk", scale=alt.Scale(
-                            domain=['🔴 Kritik (<6 Ay)', '🟠 Riskli (6-12 Ay)', '🟢 Güvenli (>12 Ay)', '⚪ Bilinmiyor'],
-                            range=['#d32f2f', '#f57c00', '#2e7d32', '#9e9e9e'])),
-                        tooltip=["Risk", "Adet"]
-                    )
-                    text = base.mark_text(radius=140).encode(
-                        text="Adet", order=alt.Order("Risk"), color=alt.value("black")
-                    )
-                    st.altair_chart(pie + text, use_container_width=True)
-
+                    if 'Location' in df_stok.columns:
+                        loc_summ = df_stok.groupby('Location')['Qty On Hand'].sum().reset_index().sort_values(
+                            'Qty On Hand', ascending=False).head(12)
+                        st.markdown("##### 🏆 En Yoğun 12 Lokasyon")
+                        chart_stok = alt.Chart(loc_summ).mark_bar(color='#FFC107').encode(
+                            x=alt.X('Location', sort='-y', title='Lokasyon'), y='Qty On Hand',
+                            tooltip=['Location', 'Qty On Hand']
+                        ).properties(height=400)
+                        st.altair_chart(chart_stok, use_container_width=True)
                 with c_data:
-                    st.markdown("##### 📋 Stok Detayı ve Risk Puanı")
-
-
-                    # Risk'e göre renklendirme (Highlight)
-                    def highlight_risk(val):
-                        if "🔴" in str(val):
-                            return 'background-color: #ffebee; color: #b71c1c'
-                        elif "🟠" in str(val):
-                            return 'background-color: #fff3e0; color: #e65100'
-                        elif "🟢" in str(val):
-                            return 'background-color: #e8f5e9; color: #1b5e20'
-                        return ''
-
-
-                    st.dataframe(
-                        df_stok.style.map(highlight_risk, subset=['Risk Durumu']),
-                        use_container_width=True,
-                        hide_index=True,
-                        column_order=("Item No", "Location", "Qty On Hand", "Expire", "Risk Durumu")
-                    )
+                    st.markdown("##### 📝 Detaylı Stok Listesi")
+                    st.dataframe(df_stok, use_container_width=True, hide_index=True)
             else:
-                st.warning("Stok verisi yok.")
+                st.warning("Veri yok.")
 
-        with tab3:
+        with tab3:  # Venlo
             if not df_venlo.empty:
                 st.dataframe(df_venlo, use_container_width=True, hide_index=True)
             else:
                 st.info("Veri yok.")
 
-        with tab4:
+        with tab4:  # Yoldaki
             if not df_yolda.empty:
                 st.dataframe(df_yolda, use_container_width=True, hide_index=True)
             else:
                 st.info("Veri yok.")
 
-        with tab5:
+        with tab5:  # Stock Out
             if not df_out.empty:
                 st.dataframe(df_out, use_container_width=True, hide_index=True,
                              column_config={
