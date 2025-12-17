@@ -6,55 +6,40 @@ from io import BytesIO
 # --- SAYFA YAPILANDIRMASI ---
 st.set_page_config(page_title="Stock Control Intelligence", layout="wide", page_icon="📦")
 
-# --- CSS AYARLARI (GÖRSEL DÜZENLEMELER) ---
+# --- CSS AYARLARI (GÖRSEL DÜZENLEMELER - KESİN ÇÖZÜM) ---
 st.markdown("""
     <style>
         /* Genel Arka Plan */
-        .stApp {background-color: #F8F9FA;}
+        .stApp {background-color: #F4F6F9;}
 
-        /* 1. TABLO BAŞLIKLARI (HEADER) - SADE VE ŞIK */
-        thead tr th:first-child {display:none}
-        thead th {
-            background-color: #f0f2f6 !important; /* Göz yormayan açık gri */
-            color: #31333F !important; /* Okunabilir koyu gri yazı */
-            font-size: 14px !important;
-            font-weight: 600 !important;
-            text-align: center !important;
-            border-bottom: 2px solid #e0e0e0 !important;
+        /* 1. KPI KARTLARI (KUTUCUKLAR) - SARI ŞERİT GERİ GELDİ */
+        div[data-testid="stMetric"] {
+            background-color: #ffffff !important;
+            border: 1px solid #e0e0e0;
+            border-left: 8px solid #FFC107 !important; /* İşte o sarı çizgi */
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         }
 
-        /* 2. TABLO SATIRLARI (Zebra Efekti - Daha Soft) */
-        tbody tr:nth-of-type(odd) {
-            background-color: #ffffff;
-        }
-        tbody tr:nth-of-type(even) {
-            background-color: #f9f9f9; /* Çok hafif gri */
-        }
+        /* Kart içindeki yazı renkleri */
+        div[data-testid="stMetricLabel"] {font-size: 14px; color: #555;}
+        div[data-testid="stMetricValue"] {font-size: 24px; color: #000; font-weight: bold;}
 
-        /* 3. SEKMELER (TABS) - PROFESYONEL */
+        /* 2. SEKMELER (TABS) */
         .stTabs [data-baseweb="tab-list"] {gap: 8px;}
         .stTabs [data-baseweb="tab"] {
-            height: 40px;
+            height: 45px;
             background-color: white;
             border-radius: 4px;
-            font-size: 14px;
-            color: #555;
-            border: 1px solid #eee;
+            font-weight: 600;
+            border: 1px solid #ddd;
         }
         .stTabs [aria-selected="true"] {
-            background-color: #ffffff !important;
+            background-color: #fff !important;
             color: #000 !important;
-            border-bottom: 3px solid #FFC107 !important; /* Sarı sadece alt çizgide detay */
+            border-bottom: 4px solid #FFC107 !important; /* Sarı alt çizgi */
             border-top: none; border-left: none; border-right: none;
-        }
-
-        /* 4. KPI KARTLARI */
-        div[data-testid="stMetric"] {
-            background-color: #ffffff;
-            border-radius: 8px;
-            padding: 15px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            border: 1px solid #eee;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -69,8 +54,8 @@ with st.sidebar:
 
     st.markdown("---")
     st.header("🔍 Gelişmiş Arama")
-    search_query = st.text_input("Arama Yap:", placeholder="Item No, Description, PO veya Lokasyon...")
-    st.caption("Not: Bu alana yazdığınız kelime tüm sütunlarda aranır.")
+    search_query = st.text_input("Arama Yap:", placeholder="Item No, Açıklama, PO, Lokasyon...")
+    st.caption("Not: Yazdığınız kelime tüm sütunlarda aranır.")
 
     if search_query:
         st.info(f"Aranan: **{search_query}**")
@@ -92,6 +77,7 @@ if uploaded_file:
         if not df_gen.empty:
             df_gen.columns = df_gen.columns.str.strip()
             if 'Item No' in df_gen.columns: df_gen['Item No'] = df_gen['Item No'].astype(str).str.strip()
+            # Yüzde hesaplama
             if target_col in df_gen.columns:
                 df_gen[target_col] = pd.to_numeric(df_gen[target_col], errors='coerce')
                 df_gen[target_col] = (df_gen[target_col] * 100).fillna(0)
@@ -101,6 +87,7 @@ if uploaded_file:
         if not df_out.empty:
             df_out.columns = df_out.columns.str.strip()
             if 'Item No' in df_out.columns: df_out['Item No'] = df_out['Item No'].astype(str).str.strip()
+            # Yüzde hesaplama
             if target_col in df_out.columns:
                 df_out[target_col] = pd.to_numeric(df_out[target_col], errors='coerce')
                 df_out[target_col] = (df_out[target_col] * 100).fillna(0)
@@ -128,7 +115,7 @@ if uploaded_file:
             if 'Qty On Hand' in df_stok.columns: df_stok['Qty On Hand'] = pd.to_numeric(df_stok['Qty On Hand'],
                                                                                         errors='coerce').fillna(0)
 
-        # --- GELİŞMİŞ FİLTRELEME ---
+        # --- GELİŞMİŞ FİLTRELEME (MULTI-SEARCH) ---
         if search_query:
             sq = search_query.lower()
 
@@ -148,20 +135,20 @@ if uploaded_file:
             df_yolda = filter_df(df_yolda, ['Item No', 'Item Description', 'Order No'])
             df_stok = filter_df(df_stok, ['Item No', 'Location'])
 
-        # --- DASHBOARD ---
+        # --- DASHBOARD BAŞLANGIÇ ---
         st.title("Stock Control Intelligence")
 
-        # KPI Kartları
+        # KPI KARTLARI (SARI ŞERİTLİ)
         qty_hand = df_stok['Qty On Hand'].sum() if not df_stok.empty else 0
         qty_order = df_venlo[
             'Ordered Qty Order UOM'].sum() if not df_venlo.empty and 'Ordered Qty Order UOM' in df_venlo.columns else 0
         qty_ship = df_yolda['Qty Shipped'].sum() if not df_yolda.empty and 'Qty Shipped' in df_yolda.columns else 0
 
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("📦 Depo Stoğu", f"{qty_hand:,.0f}")
-        col2.metric("🌍 Venlo Sipariş", f"{qty_order:,.0f}")
-        col3.metric("🚢 Yoldaki Miktar", f"{qty_ship:,.0f}")
-        col4.metric("🚨 Kritik Ürün", f"{len(df_out)}")
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("📦 Depo Stoğu", f"{qty_hand:,.0f}")
+        c2.metric("🌍 Venlo Sipariş", f"{qty_order:,.0f}")
+        c3.metric("🚢 Yoldaki Miktar", f"{qty_ship:,.0f}")
+        c4.metric("🚨 Kritik Ürün", f"{len(df_out)}")
 
         st.markdown("###")
 
