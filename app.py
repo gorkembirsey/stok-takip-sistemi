@@ -4,43 +4,38 @@ import altair as alt
 from io import BytesIO
 
 # --- SAYFA YAPILANDIRMASI ---
+# Sayfa sekmesinde görünen isim güncellendi
 st.set_page_config(page_title="Stock Control Intelligence", layout="wide", page_icon="📦")
 
-# --- CSS AYARLARI (GÖRSEL DÜZENLEMELER - KESİN ÇÖZÜM) ---
+# --- CSS AYARLARI (GÖRSELLİK BURADA) ---
 st.markdown("""
     <style>
-        /* Genel Arka Plan */
-        .stApp {background-color: #F4F6F9;}
+        .stApp {background-color: #F5F7FA;}
 
-        /* 1. KPI KARTLARI (KUTUCUKLAR) - SARI ŞERİT GERİ GELDİ */
-        div[data-testid="stMetric"] {
-            background-color: #ffffff !important;
-            border: 1px solid #e0e0e0;
-            border-left: 8px solid #FFC107 !important; /* İşte o sarı çizgi */
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        /* Tablo Başlıklarını (Header) Renklendirme */
+        thead tr th:first-child {display:none}
+        thead th {
+            background-color: #FFC107 !important; /* Stryker Gold */
+            color: black !important;
+            font-size: 14px !important;
+            text-align: center !important;
         }
 
-        /* Kart içindeki yazı renkleri */
-        div[data-testid="stMetricLabel"] {font-size: 14px; color: #555;}
-        div[data-testid="stMetricValue"] {font-size: 24px; color: #000; font-weight: bold;}
+        /* Tablo Satırları (Zebra Efekti) */
+        tbody tr:nth-of-type(odd) {
+            background-color: #ffffff;
+        }
+        tbody tr:nth-of-type(even) {
+            background-color: #fffdf0; /* Çok hafif sarımsı */
+        }
 
-        /* 2. SEKMELER (TABS) */
-        .stTabs [data-baseweb="tab-list"] {gap: 8px;}
-        .stTabs [data-baseweb="tab"] {
-            height: 45px;
-            background-color: white;
-            border-radius: 4px;
-            font-weight: 600;
-            border: 1px solid #ddd;
-        }
-        .stTabs [aria-selected="true"] {
-            background-color: #fff !important;
-            color: #000 !important;
-            border-bottom: 4px solid #FFC107 !important; /* Sarı alt çizgi */
-            border-top: none; border-left: none; border-right: none;
-        }
+        /* Tab Sekmeleri */
+        .stTabs [data-baseweb="tab-list"] {gap: 10px;}
+        .stTabs [data-baseweb="tab"] {height: 45px; background-color: white; border-radius: 5px; font-weight: bold; border: 1px solid #ddd;}
+        .stTabs [aria-selected="true"] {background-color: #FFC107 !important; color: black !important; border-color: #FFC107 !important;}
+
+        /* KPI Kartları */
+        div[data-testid="stMetric"] {background-color: #ffffff; border-radius: 10px; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-left: 5px solid #FFC107;}
     </style>
 """, unsafe_allow_html=True)
 
@@ -54,11 +49,11 @@ with st.sidebar:
 
     st.markdown("---")
     st.header("🔍 Gelişmiş Arama")
-    search_query = st.text_input("Arama Yap:", placeholder="Item No, Açıklama, PO, Lokasyon...")
-    st.caption("Not: Yazdığınız kelime tüm sütunlarda aranır.")
+    search_query = st.text_input("Arama Yap:", placeholder="Item No, Description, PO veya Lokasyon...")
+    st.caption("Not: Bu alana yazdığınız kelime tüm sütunlarda (Kod, Açıklama, Sipariş No vb.) aranır.")
 
     if search_query:
-        st.info(f"Aranan: **{search_query}**")
+        st.info(f"Aranan Kelime: **{search_query}**")
         if st.button("Temizle"):
             st.rerun()
 
@@ -70,6 +65,7 @@ if uploaded_file:
         sheets = {k.strip(): v for k, v in xls.items()}
 
         # --- VERİ HAZIRLIĞI ---
+
         target_col = 'SS Coverage (W/O Consignment)'
 
         # 1. GENERAL SHEET
@@ -77,7 +73,6 @@ if uploaded_file:
         if not df_gen.empty:
             df_gen.columns = df_gen.columns.str.strip()
             if 'Item No' in df_gen.columns: df_gen['Item No'] = df_gen['Item No'].astype(str).str.strip()
-            # Yüzde hesaplama
             if target_col in df_gen.columns:
                 df_gen[target_col] = pd.to_numeric(df_gen[target_col], errors='coerce')
                 df_gen[target_col] = (df_gen[target_col] * 100).fillna(0)
@@ -87,7 +82,6 @@ if uploaded_file:
         if not df_out.empty:
             df_out.columns = df_out.columns.str.strip()
             if 'Item No' in df_out.columns: df_out['Item No'] = df_out['Item No'].astype(str).str.strip()
-            # Yüzde hesaplama
             if target_col in df_out.columns:
                 df_out[target_col] = pd.to_numeric(df_out[target_col], errors='coerce')
                 df_out[target_col] = (df_out[target_col] * 100).fillna(0)
@@ -135,20 +129,22 @@ if uploaded_file:
             df_yolda = filter_df(df_yolda, ['Item No', 'Item Description', 'Order No'])
             df_stok = filter_df(df_stok, ['Item No', 'Location'])
 
-        # --- DASHBOARD BAŞLANGIÇ ---
+        # --- DASHBOARD GÖRÜNÜMÜ ---
+
+        # 1. Başlık Güncellemesi
         st.title("Stock Control Intelligence")
 
-        # KPI KARTLARI (SARI ŞERİTLİ)
+        # KPI Kartları
         qty_hand = df_stok['Qty On Hand'].sum() if not df_stok.empty else 0
         qty_order = df_venlo[
             'Ordered Qty Order UOM'].sum() if not df_venlo.empty and 'Ordered Qty Order UOM' in df_venlo.columns else 0
         qty_ship = df_yolda['Qty Shipped'].sum() if not df_yolda.empty and 'Qty Shipped' in df_yolda.columns else 0
 
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("📦 Depo Stoğu", f"{qty_hand:,.0f}")
-        c2.metric("🌍 Venlo Sipariş", f"{qty_order:,.0f}")
-        c3.metric("🚢 Yoldaki Miktar", f"{qty_ship:,.0f}")
-        c4.metric("🚨 Kritik Ürün", f"{len(df_out)}")
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("📦 Depo Stoğu", f"{qty_hand:,.0f}")
+        col2.metric("🌍 Venlo Sipariş", f"{qty_order:,.0f}")
+        col3.metric("🚢 Yoldaki Miktar", f"{qty_ship:,.0f}")
+        col4.metric("🚨 Kritik Ürün", f"{len(df_out)}")
 
         st.markdown("###")
 
