@@ -8,50 +8,33 @@ import os
 # --- SAYFA YAPILANDIRMASI ---
 st.set_page_config(page_title="Stock Control Intelligence", layout="wide", page_icon="🧠")
 
-# --- SABİT DOSYA YOLU (SUNUCUDA SAKLANACAK DOSYA ADI) ---
+# --- SABİT DOSYA YOLU ---
 DATA_FILE_PATH = "master_stryker_data.xlsx"
 
 # --- CSS AYARLARI ---
 st.markdown("""
     <style>
         .stApp {background-color: #F4F6F9;}
-
-        /* ALERT KUTUCUKLARI */
-        .alert-card {
-            padding: 20px; border-radius: 10px; color: white; font-weight: bold;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; text-align: center;
-        }
+        /* Alert, KPI, Tablo stilleri (Aynen Korundu) */
+        .alert-card {padding: 20px; border-radius: 10px; color: white; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; text-align: center;}
         .bg-red {background-color: #d32f2f; border-left: 10px solid #b71c1c;}
         .bg-orange {background-color: #f57c00; border-left: 10px solid #e65100;}
         .bg-gray {background-color: #616161; border-left: 10px solid #212121;}
         .alert-number {font-size: 32px; display: block;}
         .alert-text {font-size: 16px; opacity: 0.9;}
-
-        /* KPI KARTLARI */
-        div[data-testid="stMetric"] {
-            background-color: #ffffff !important; border: 1px solid #e0e0e0;
-            border-left: 8px solid #FFC107 !important; padding: 15px; border-radius: 8px;
-        }
-
-        /* TABLO VE SEKME STİLLERİ */
-        thead th {
-            background-color: #f0f2f6 !important; color: #31333F !important;
-            font-size: 14px !important; font-weight: 600 !important;
-            border-bottom: 2px solid #e0e0e0 !important;
-        }
+        div[data-testid="stMetric"] {background-color: #ffffff !important; border: 1px solid #e0e0e0; border-left: 8px solid #FFC107 !important; padding: 15px; border-radius: 8px;}
+        thead th {background-color: #f0f2f6 !important; color: #31333F !important; font-size: 14px !important; font-weight: 600 !important; border-bottom: 2px solid #e0e0e0 !important;}
         tbody tr:nth-of-type(even) {background-color: #f9f9f9;}
         .stTabs [data-baseweb="tab-list"] {gap: 8px;}
         .stTabs [data-baseweb="tab"] {height: 45px; background-color: white; border-radius: 4px; font-weight: 600; border: 1px solid #ddd;}
         .stTabs [aria-selected="true"] {background-color: #fff !important; color: #000 !important; border-bottom: 4px solid #FFC107 !important;}
-
-        /* İNDİRME BUTONU */
         .stDownloadButton button {width: 100%; border: 1px solid #28a745; color: #28a745;}
         .stDownloadButton button:hover {background-color: #28a745; color: white;}
     </style>
 """, unsafe_allow_html=True)
 
 
-# --- EXCEL İNDİRME FONKSİYONLARI ---
+# --- İNDİRME FONKSİYONLARI ---
 def convert_df_single(df):
     output = BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
@@ -68,52 +51,37 @@ def convert_full_report(dfs_dict):
     return output.getvalue()
 
 
-# --- YAN MENÜ VE YÖNETİCİ GİRİŞİ ---
+# --- YAN MENÜ ---
 with st.sidebar:
     st.image(
         "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Stryker_Corporation_logo.svg/2560px-Stryker_Corporation_logo.svg.png",
         width=150)
 
-    # YÖNETİCİ PANELİ (ŞİFRE KORUMALI)
-    with st.expander("🔒 Yönetici Girişi (Veri Yükleme)"):
+    with st.expander("🔒 Yönetici Girişi"):
         password = st.text_input("Şifre", type="password")
-        if password == "stryker2026":  # ŞİFREYİ BURADAN DEĞİŞTİREBİLİRSİNİZ
-            st.success("Giriş Başarılı!")
-            uploaded_file = st.file_uploader("Günlük Excel Dosyasını Yükle ve Kaydet", type=["xlsx"])
-
+        if password == "stryker2025":
+            uploaded_file = st.file_uploader("Günlük Excel Dosyasını Yükle", type=["xlsx"])
             if uploaded_file is not None:
-                # Dosyayı sunucuya kalıcı olarak kaydet
                 with open(DATA_FILE_PATH, "wb") as f:
                     f.write(uploaded_file.getbuffer())
-                st.toast("✅ Dosya başarıyla güncellendi! Herkes yeni veriyi görüyor.", icon="💾")
-                st.rerun()  # Sayfayı yenile ki yeni veri görünsün
-        else:
-            if password:
-                st.error("Hatalı Şifre")
+                st.toast("✅ Veri güncellendi!", icon="💾")
+                st.rerun()
 
     st.markdown("---")
-
-    # Bu alanlar veri yüklendikten sonra dolacak
     filter_placeholder = st.container()
     st.markdown("---")
     download_placeholder = st.container()
 
-# --- VERİ YÜKLEME VE İŞLEME MANTIĞI ---
-# 1. Önce Admin yeni dosya yükledi mi diye bakarız (Yukarıda hallettik)
-# 2. Yüklenmediyse, sunucuda kayıtlı "master" dosya var mı diye bakarız.
-
-current_file = None
-
+# --- DOSYA KONTROLÜ ---
 if os.path.exists(DATA_FILE_PATH):
     current_file = DATA_FILE_PATH
-    # Dosyanın son güncellenme zamanını göster
     mod_time = datetime.datetime.fromtimestamp(os.path.getmtime(DATA_FILE_PATH)).strftime('%Y-%m-%d %H:%M')
-    st.sidebar.caption(f"📅 Son Veri Güncelleme: {mod_time}")
+    st.sidebar.caption(f"📅 Son Güncelleme: {mod_time}")
 else:
-    st.info("👋 Hoşgeldiniz. Henüz sisteme veri yüklenmemiş. Lütfen yöneticinizden veri girişi yapmasını isteyin.")
-    st.stop()  # Veri yoksa aşağıdakileri çalıştırma
+    st.info("👋 Sistemde veri yok. Lütfen yönetici girişi yapıp dosya yükleyin.")
+    st.stop()
 
-# --- ANA PROGRAM (KAYITLI DOSYADAN OKUMA) ---
+# --- ANA PROGRAM ---
 if current_file:
     try:
         xls = pd.read_excel(current_file, sheet_name=None)
@@ -122,14 +90,6 @@ if current_file:
         # --- VERİ HAZIRLIĞI ---
         target_col = 'SS Coverage (W/O Consignment)'
         today = datetime.datetime.now()
-
-
-        # Helper Functions for Data Processing
-        def clean_id(df, col):
-            if not df.empty and col in df.columns:
-                df[col] = df[col].astype(str).str.strip()
-            return df
-
 
         # GENERAL
         df_gen = sheets.get("General", pd.DataFrame())
@@ -146,7 +106,7 @@ if current_file:
             item_franchise_map = dict(zip(temp_map['Item No'], temp_map['Franchise Description']))
 
 
-        # Helper to process other sheets
+        # DİĞER TABLOLAR
         def process_df(sheet_name, id_col, rename_to='Item No'):
             df = sheets.get(sheet_name, pd.DataFrame())
             if not df.empty:
@@ -193,30 +153,78 @@ if current_file:
                 df_stok['Risk Durumu'] = "⚪ Tarih Yok"
                 df_stok['Expire Date'] = None
 
-        # --- SIDEBAR FİLTRELERİ (HERKES GÖRÜR) ---
+        # --- SIDEBAR: DİNAMİK ÇOKLU FİLTRE MOTORU ---
         with filter_placeholder:
-            st.header("🎯 Filtreler")
+            st.header("🎯 Gelişmiş Filtreleme")
 
+            # 1. Sabit Franchise Filtresi (En üstte kalsın)
             all_franchises = sorted(list(set(item_franchise_map.values()))) if item_franchise_map else []
             all_franchises = [x for x in all_franchises if str(x) != 'nan']
-
             selected_franchises = st.multiselect("İş Birimi (Franchise):", options=all_franchises, placeholder="Tümü")
+
             st.markdown("---")
-            search_query = st.text_input("🔍 Global Arama:", placeholder="Herhangi bir veri...")
+
+            # 2. DİNAMİK SEÇİCİ (Magic happens here)
+            st.markdown("#### ⚡ Çoklu Veri Seçimi")
+
+            # Filtrelemek istediğimiz mantıklı sütunların listesi (İngilizce/Excel başlıkları)
+            # Buraya filtrelemek istediğiniz her sütun adını ekleyebilirsiniz.
+            filterable_columns = [
+                'Item No',
+                'Location',
+                'Customer PO',
+                'Order Number',
+                'Item Description',
+                'Risk Durumu'
+            ]
+
+            selected_filter_col = st.selectbox("1. Kriter Seçin:", filterable_columns)
+
+            # Seçilen kritere göre TÜM tablolardan o sütunun benzersiz değerlerini topla
+            unique_values = set()
+
+            # Tüm dataframeleri gez ve eğer o sütun varsa değerlerini al
+            all_dfs = [df_gen, df_stok, df_venlo, df_yolda, df_out]
+            for d in all_dfs:
+                if not d.empty and selected_filter_col in d.columns:
+                    unique_values.update(d[selected_filter_col].dropna().astype(str).unique())
+
+            sorted_values = sorted(list(unique_values))
+
+            # Çoklu Seçim Kutusu (Excel'den yapıştırılmaya uygun)
+            selected_dynamic_values = st.multiselect(
+                f"2. {selected_filter_col} Seçin/Yapıştırın:",
+                options=sorted_values,
+                placeholder="Çoklu seçim yapın..."
+            )
+
+            st.markdown("---")
+            search_query = st.text_input("🔍 Global Arama (Metin):", placeholder="Herhangi bir veri...")
 
 
-        # --- FİLTRE MOTORU ---
+        # --- FİLTRE UYGULAMA MOTORU ---
         def apply_filters(df):
             if df.empty: return df
             temp_df = df.copy()
+
+            # 1. Franchise
             if selected_franchises and 'Franchise Description' in temp_df.columns:
                 temp_df = temp_df[temp_df['Franchise Description'].isin(selected_franchises)]
+
+            # 2. Dinamik Çoklu Filtre (YENİ)
+            # Eğer seçilen kriter bu tabloda varsa ve kullanıcı seçim yaptıysa filtrele
+            if selected_dynamic_values and selected_filter_col in temp_df.columns:
+                # astype(str) yaparak sayı/metin uyuşmazlığını önlüyoruz
+                temp_df = temp_df[temp_df[selected_filter_col].astype(str).isin(selected_dynamic_values)]
+
+            # 3. Global Metin Arama
             if search_query:
                 mask = pd.Series([False] * len(temp_df))
                 for col in temp_df.columns:
                     mask = mask | temp_df[col].astype(str).str.lower().str.contains(search_query.lower(), regex=False,
                                                                                     na=False)
                 temp_df = temp_df[mask]
+
             return temp_df
 
 
@@ -226,7 +234,7 @@ if current_file:
         f_yolda = apply_filters(df_yolda)
         f_out = apply_filters(df_out)
 
-        # --- İNDİRME BUTONU ---
+        # --- İNDİRME ---
         with download_placeholder:
             if not f_stok.empty or not f_gen.empty:
                 full_report_data = {
@@ -235,19 +243,25 @@ if current_file:
                 }
                 full_excel = convert_full_report(full_report_data)
                 st.download_button(
-                    label="📊 Tüm Raporu İndir (Excel)",
+                    label="📊 Raporu İndir (Excel)",
                     data=full_excel,
-                    file_name=f"Stryker_Rapor_Full_{datetime.date.today()}.xlsx",
+                    file_name=f"Stryker_Rapor_{datetime.date.today()}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
 
-        # --- DASHBOARD GÖRÜNÜMÜ ---
+        # --- DASHBOARD ---
         st.title("Stock Control Intelligence")
 
-        if selected_franchises:
-            st.info(f"📂 Filtre: **{', '.join(selected_franchises)}**")
+        # Filtre Özeti
+        filters_applied = []
+        if selected_franchises: filters_applied.append(f"Franchise ({len(selected_franchises)})")
+        if selected_dynamic_values: filters_applied.append(f"{selected_filter_col} ({len(selected_dynamic_values)})")
+        if search_query: filters_applied.append(f"Arama: {search_query}")
 
-        # KPI HEADER
+        if filters_applied:
+            st.info(f"📂 Aktif Filtreler: **{' + '.join(filters_applied)}**")
+
+        # KPI
         qty_hand = f_stok['Qty On Hand'].sum() if not f_stok.empty else 0
         qty_order = f_venlo['Ordered Qty Order UOM'].sum() if not f_venlo.empty else 0
         qty_ship = f_yolda['Qty Shipped'].sum() if not f_yolda.empty else 0
@@ -267,10 +281,8 @@ if current_file:
 
         with tab1:  # General
             if not f_gen.empty:
-                st.dataframe(f_gen, use_container_width=True, hide_index=True,
-                             column_config={
-                                 "SS Coverage (W/O Consignment)": st.column_config.NumberColumn("SS Coverage",
-                                                                                                format="%.1f%%")})
+                st.dataframe(f_gen, use_container_width=True, hide_index=True, column_config={
+                    "SS Coverage (W/O Consignment)": st.column_config.NumberColumn("SS Coverage", format="%.1f%%")})
             else:
                 st.info("Veri yok.")
 
@@ -317,16 +329,13 @@ if current_file:
 
         with tab5:  # Stock Out
             if not f_out.empty:
-                st.dataframe(f_out, use_container_width=True, hide_index=True,
-                             column_config={
-                                 "SS Coverage (W/O Consignment)": st.column_config.NumberColumn("SS Coverage",
-                                                                                                format="%.1f%%")})
+                st.dataframe(f_out, use_container_width=True, hide_index=True, column_config={
+                    "SS Coverage (W/O Consignment)": st.column_config.NumberColumn("SS Coverage", format="%.1f%%")})
             else:
                 st.success("Sorun yok.")
 
         with tab_alert:  # Alert Center
             st.markdown("#### ⚠️ Operasyonel Risk Paneli")
-
             red_risk = f_stok[f_stok['Risk Durumu'] == "🔴 Kritik (<6 Ay)"] if not f_stok.empty else pd.DataFrame()
             count_red = len(red_risk)
             count_orange = f_stok[f_stok['Risk Durumu'] == "🟠 Riskli (6-12 Ay)"].shape[0] if not f_stok.empty else 0
