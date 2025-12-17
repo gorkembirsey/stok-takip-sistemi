@@ -10,7 +10,7 @@ st.set_page_config(page_title="Stock Control Intelligence", layout="wide", page_
 
 DATA_FILE_PATH = "master_stryker_data.xlsx"
 
-# --- CSS (ESKİ BEĞENİLEN GÖRÜNÜM) ---
+# --- CSS (AYNEN KORUNDU) ---
 st.markdown("""
     <style>
         .stApp {background-color: #F4F6F9;}
@@ -25,14 +25,13 @@ st.markdown("""
             margin-bottom: 15px; 
             text-align: center;
             display: flex;
-            flex-direction: column; /* Yazıları alt alta dizer */
+            flex-direction: column; 
             justify-content: center;
         }
         .bg-red {background-color: #d32f2f; border-left: 6px solid #b71c1c;}
         .bg-orange {background-color: #f57c00; border-left: 6px solid #e65100;}
         .bg-gray {background-color: #616161; border-left: 6px solid #212121;}
 
-        /* YAZI DÜZENİ: Yazı üstte, Rakam altta */
         .alert-text {font-size: 16px; opacity: 0.95; margin-bottom: 5px;}
         .alert-number {font-size: 32px; font-weight: 800; line-height: 1.2;}
 
@@ -85,7 +84,7 @@ def load_excel_data(file_path, mtime):
     return {k.strip(): v for k, v in xls.items()}
 
 
-# --- TARİH FORMATLAYICI ---
+# --- FORMATLAYICI ---
 def format_turkish_date(df, columns):
     for col in columns:
         if col in df.columns:
@@ -201,7 +200,7 @@ if not df_stok.empty:
         df_stok['Risk Durumu'] = "⚪ Tarih Yok"
         df_stok['Expire Date'] = ""
 
-# --- SIDEBAR FİLTRELER ---
+# --- SIDEBAR FİLTRE ---
 st.sidebar.header("🎯 Filtre Paneli")
 st.sidebar.button("Filtreleri Temizle", on_click=reset_filters, type="secondary")
 
@@ -209,23 +208,16 @@ with st.sidebar.form("filter_form"):
     all_franchises = sorted([x for x in list(set(item_franchise_map.values())) if str(x) != 'nan'])
     selected_franchises = st.multiselect("İş Birimi (Franchise):", options=all_franchises, placeholder="Tümü",
                                          key="franchise_key")
-
     st.markdown("---")
     filterable_columns = ['Item No', 'Location', 'Customer PO', 'Order Number', 'Item Description', 'Risk Durumu']
     selected_filter_col = st.selectbox("1. Kriter Seçin:", filterable_columns)
-
     unique_values = set()
     for d in [df_gen, df_stok, df_venlo, df_yolda, df_out]:
         if not d.empty and selected_filter_col in d.columns:
             unique_values.update(d[selected_filter_col].dropna().astype(str).unique())
-
-    selected_dynamic_values = st.multiselect(
-        f"2. {selected_filter_col} Değerleri:",
-        options=sorted(list(unique_values)),
-        placeholder="Çoklu seçim yapın...",
-        key="dynamic_val_key"
-    )
-
+    selected_dynamic_values = st.multiselect(f"2. {selected_filter_col} Değerleri:",
+                                             options=sorted(list(unique_values)), placeholder="Çoklu seçim yapın...",
+                                             key="dynamic_val_key")
     st.markdown("---")
     search_query = st.text_input("🔍 Global Arama:", placeholder="Herhangi bir veri...", key="search_key")
     submitted = st.form_submit_button("🚀 FİLTRELERİ UYGULA")
@@ -263,7 +255,6 @@ if not f_stok.empty or not f_gen.empty:
 
 # --- DASHBOARD ---
 st.title("Stock Control Intelligence")
-
 if submitted:
     msg = []
     if selected_franchises: msg.append(f"Franchise ({len(selected_franchises)})")
@@ -271,7 +262,6 @@ if submitted:
     if search_query: msg.append(f"Arama: '{search_query}'")
     if msg: st.info(f"✅ Filtreler: **{' + '.join(msg)}**")
 
-# KPI
 c1, c2, c3, c4 = st.columns(4)
 c1.metric("📦 Toplam Stok", f"{f_stok['Qty On Hand'].sum() if not f_stok.empty else 0:,.0f}")
 c2.metric("🌍 Bekleyen Sipariş", f"{f_venlo['Ordered Qty Order UOM'].sum() if not f_venlo.empty else 0:,.0f}")
@@ -298,7 +288,6 @@ with tab2:
                 loc_summ = f_stok.groupby('Location')['Qty On Hand'].sum().reset_index().sort_values('Qty On Hand',
                                                                                                      ascending=False).head(
                     12)
-                st.markdown("##### 🏆 En Yoğun 12 Lokasyon")
                 chart = alt.Chart(loc_summ).mark_bar(color='#FFC107').encode(x=alt.X('Location', sort='-y'),
                                                                              y='Qty On Hand', tooltip=['Location',
                                                                                                        'Qty On Hand']).properties(
@@ -339,7 +328,6 @@ with tab_alert:
     st.markdown("#### ⚠️ Operasyonel Risk Paneli")
     red_risk = f_stok[f_stok['Risk Durumu'] == "🔴 Kritik (<6 Ay)"] if not f_stok.empty else pd.DataFrame()
 
-    # KARTLAR (Yazı Üstte, Rakam Altta)
     a1, a2, a3 = st.columns(3)
     with a1:
         st.markdown(
@@ -355,7 +343,6 @@ with tab_alert:
             f"""<div class="alert-card bg-gray"><span class="alert-text">Stock Out</span><span class="alert-number">{len(f_out)}</span></div>""",
             unsafe_allow_html=True)
 
-    # HEADER + BUTON (Yanyana, Tabloyu sıkıştırmadan)
     col_header, col_btn = st.columns([6, 1])
     with col_header:
         st.markdown("##### 🕵️‍♂️ Risk Analiz Tablosu")
@@ -363,7 +350,6 @@ with tab_alert:
         if not red_risk.empty:
             st.download_button("📥 Raporu İndir", data=convert_df_single(red_risk), file_name="Kritik_Risk.xlsx")
 
-    # TABLO (Tam Genişlik)
     if not f_stok.empty:
         df_sorted = f_stok.sort_values("Days_To_Expire")
 
@@ -379,7 +365,13 @@ with tab_alert:
 
 
         show_cols = ["Item No", "Location", "Qty On Hand", "Expire Date", "Risk Durumu", "Franchise Description"]
-        st.dataframe(df_sorted[[c for c in show_cols if c in df_sorted.columns]].style.apply(style_rows, axis=1),
-                     use_container_width=True, hide_index=True)
+        # .format ile Qty On Hand sütununu tam sayıya çeviriyoruz (5.0000 -> 5)
+        st.dataframe(
+            df_sorted[[c for c in show_cols if c in df_sorted.columns]]
+            .style.apply(style_rows, axis=1)
+            .format({"Qty On Hand": "{:.0f}"}),
+            use_container_width=True,
+            hide_index=True
+        )
     else:
         st.info("Veri yok.")
