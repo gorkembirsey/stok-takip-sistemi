@@ -10,12 +10,12 @@ st.set_page_config(page_title="Stock Control Intelligence", layout="wide", page_
 
 DATA_FILE_PATH = "master_stryker_data.xlsx"
 
-# --- CSS (GÖRSEL DÜZEN - EN BEĞENDİĞİN HALİ) ---
+# --- CSS (ESKİ BEĞENİLEN GÖRÜNÜM) ---
 st.markdown("""
     <style>
         .stApp {background-color: #F4F6F9;}
 
-        /* ALERT KARTLARI (Kutucuklar) */
+        /* ALERT KARTLARI */
         .alert-card {
             padding: 15px; 
             border-radius: 8px; 
@@ -24,15 +24,19 @@ st.markdown("""
             box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
             margin-bottom: 15px; 
             text-align: center;
+            display: flex;
+            flex-direction: column; /* Yazıları alt alta dizer */
+            justify-content: center;
         }
         .bg-red {background-color: #d32f2f; border-left: 6px solid #b71c1c;}
         .bg-orange {background-color: #f57c00; border-left: 6px solid #e65100;}
         .bg-gray {background-color: #616161; border-left: 6px solid #212121;}
 
-        .alert-number {font-size: 28px; display: block;}
-        .alert-text {font-size: 14px; opacity: 0.9;}
+        /* YAZI DÜZENİ: Yazı üstte, Rakam altta */
+        .alert-text {font-size: 16px; opacity: 0.95; margin-bottom: 5px;}
+        .alert-number {font-size: 32px; font-weight: 800; line-height: 1.2;}
 
-        /* KPI KARTLARI (Sarı Şeritli) */
+        /* KPI KARTLARI */
         div[data-testid="stMetric"] {
             background-color: #ffffff !important; 
             border: 1px solid #e0e0e0; 
@@ -66,11 +70,9 @@ st.markdown("""
             border-bottom: 3px solid #FFC107 !important;
         }
 
-        /* İNDİRME ve FORM BUTONLARI */
+        /* BUTONLAR */
         .stDownloadButton button {width: 100%; border: 1px solid #28a745; color: #28a745;}
         div[data-testid="stForm"] button {width: 100%; background-color: #FFC107; color: black; font-weight: bold; border: none;}
-
-        /* TEMİZLE BUTONU (Sade) */
         button[kind="secondary"] {width: 100%;}
     </style>
 """, unsafe_allow_html=True)
@@ -109,7 +111,7 @@ def convert_df_single(df):
     return output.getvalue()
 
 
-# --- RESET FONKSİYONU ---
+# --- RESET ---
 def reset_filters():
     st.session_state.franchise_key = []
     st.session_state.dynamic_val_key = []
@@ -199,20 +201,16 @@ if not df_stok.empty:
         df_stok['Risk Durumu'] = "⚪ Tarih Yok"
         df_stok['Expire Date'] = ""
 
-# --- SIDEBAR FİLTRELEME ---
+# --- SIDEBAR FİLTRELER ---
 st.sidebar.header("🎯 Filtre Paneli")
-
-# RESET BUTONU (Sade ve ikonusuz)
 st.sidebar.button("Filtreleri Temizle", on_click=reset_filters, type="secondary")
 
 with st.sidebar.form("filter_form"):
     all_franchises = sorted([x for x in list(set(item_franchise_map.values())) if str(x) != 'nan'])
-    # Key = franchise_key
     selected_franchises = st.multiselect("İş Birimi (Franchise):", options=all_franchises, placeholder="Tümü",
                                          key="franchise_key")
 
     st.markdown("---")
-
     filterable_columns = ['Item No', 'Location', 'Customer PO', 'Order Number', 'Item Description', 'Risk Durumu']
     selected_filter_col = st.selectbox("1. Kriter Seçin:", filterable_columns)
 
@@ -221,7 +219,6 @@ with st.sidebar.form("filter_form"):
         if not d.empty and selected_filter_col in d.columns:
             unique_values.update(d[selected_filter_col].dropna().astype(str).unique())
 
-    # Key = dynamic_val_key
     selected_dynamic_values = st.multiselect(
         f"2. {selected_filter_col} Değerleri:",
         options=sorted(list(unique_values)),
@@ -230,23 +227,18 @@ with st.sidebar.form("filter_form"):
     )
 
     st.markdown("---")
-    # Key = search_key
     search_query = st.text_input("🔍 Global Arama:", placeholder="Herhangi bir veri...", key="search_key")
-
     submitted = st.form_submit_button("🚀 FİLTRELERİ UYGULA")
 
 
-# --- FİLTRE MANTIĞI ---
+# --- FİLTRE MOTORU ---
 def fast_filter(df):
     if df.empty: return df
     mask = pd.Series(True, index=df.index)
-
     if selected_franchises and 'Franchise Description' in df.columns:
         mask &= df['Franchise Description'].isin(selected_franchises)
-
     if selected_dynamic_values and selected_filter_col in df.columns:
         mask &= df[selected_filter_col].astype(str).isin(selected_dynamic_values)
-
     if search_query:
         str_cols = df.select_dtypes(include=['object', 'string']).columns
         if len(str_cols) > 0:
@@ -279,7 +271,7 @@ if submitted:
     if search_query: msg.append(f"Arama: '{search_query}'")
     if msg: st.info(f"✅ Filtreler: **{' + '.join(msg)}**")
 
-# KPI (Eski, düzgün hizalı hali)
+# KPI
 c1, c2, c3, c4 = st.columns(4)
 c1.metric("📦 Toplam Stok", f"{f_stok['Qty On Hand'].sum() if not f_stok.empty else 0:,.0f}")
 c2.metric("🌍 Bekleyen Sipariş", f"{f_venlo['Ordered Qty Order UOM'].sum() if not f_venlo.empty else 0:,.0f}")
@@ -347,47 +339,47 @@ with tab_alert:
     st.markdown("#### ⚠️ Operasyonel Risk Paneli")
     red_risk = f_stok[f_stok['Risk Durumu'] == "🔴 Kritik (<6 Ay)"] if not f_stok.empty else pd.DataFrame()
 
-    # KUTUCUKLAR (Eski, hizalı düzen)
+    # KARTLAR (Yazı Üstte, Rakam Altta)
     a1, a2, a3 = st.columns(3)
     with a1:
         st.markdown(
-            f"""<div class="alert-card bg-red"><span class="alert-number">{len(red_risk)}</span><span class="alert-text">Kritik Stok (<6 Ay)</span></div>""",
+            f"""<div class="alert-card bg-red"><span class="alert-text">Kritik Stok (<6 Ay)</span><span class="alert-number">{len(red_risk)}</span></div>""",
             unsafe_allow_html=True)
     with a2:
         cnt_org = f_stok[f_stok['Risk Durumu'] == "🟠 Riskli (6-12 Ay)"].shape[0] if not f_stok.empty else 0
         st.markdown(
-            f"""<div class="alert-card bg-orange"><span class="alert-number">{cnt_org}</span><span class="alert-text">Riskli Stok (6-12 Ay)</span></div>""",
+            f"""<div class="alert-card bg-orange"><span class="alert-text">Riskli Stok (6-12 Ay)</span><span class="alert-number">{cnt_org}</span></div>""",
             unsafe_allow_html=True)
     with a3:
         st.markdown(
-            f"""<div class="alert-card bg-gray"><span class="alert-number">{len(f_out)}</span><span class="alert-text">Stock Out</span></div>""",
+            f"""<div class="alert-card bg-gray"><span class="alert-text">Stock Out</span><span class="alert-number">{len(f_out)}</span></div>""",
             unsafe_allow_html=True)
 
-    # TABLO VE İNDİRME BUTONU (Eski düzen: Tablo solda geniş, Buton sağda dar)
-    c_tbl, c_btn = st.columns([4, 1])
-    with c_tbl:
+    # HEADER + BUTON (Yanyana, Tabloyu sıkıştırmadan)
+    col_header, col_btn = st.columns([6, 1])
+    with col_header:
         st.markdown("##### 🕵️‍♂️ Risk Analiz Tablosu")
-        if not f_stok.empty:
-            df_sorted = f_stok.sort_values("Days_To_Expire")
-
-
-            def style_rows(row):
-                if "🔴" in str(row['Risk Durumu']):
-                    return ['background-color: #ffebee; color: #b71c1c'] * len(row)
-                elif "🟠" in str(row['Risk Durumu']):
-                    return ['background-color: #fff3e0; color: #e65100'] * len(row)
-                elif "🟢" in str(row['Risk Durumu']):
-                    return ['background-color: #e8f5e9; color: #1b5e20'] * len(row)
-                return [''] * len(row)
-
-
-            show_cols = ["Item No", "Location", "Qty On Hand", "Expire Date", "Risk Durumu", "Franchise Description"]
-            st.dataframe(df_sorted[[c for c in show_cols if c in df_sorted.columns]].style.apply(style_rows, axis=1),
-                         use_container_width=True, hide_index=True)
-        else:
-            st.info("Veri yok.")
-
-    with c_btn:
+    with col_btn:
         if not red_risk.empty:
-            st.write("")  # Hizalama için boşluk
-            st.download_button("📥 Kritik İndir", data=convert_df_single(red_risk), file_name="Kritik_Risk.xlsx")
+            st.download_button("📥 Raporu İndir", data=convert_df_single(red_risk), file_name="Kritik_Risk.xlsx")
+
+    # TABLO (Tam Genişlik)
+    if not f_stok.empty:
+        df_sorted = f_stok.sort_values("Days_To_Expire")
+
+
+        def style_rows(row):
+            if "🔴" in str(row['Risk Durumu']):
+                return ['background-color: #ffebee; color: #b71c1c'] * len(row)
+            elif "🟠" in str(row['Risk Durumu']):
+                return ['background-color: #fff3e0; color: #e65100'] * len(row)
+            elif "🟢" in str(row['Risk Durumu']):
+                return ['background-color: #e8f5e9; color: #1b5e20'] * len(row)
+            return [''] * len(row)
+
+
+        show_cols = ["Item No", "Location", "Qty On Hand", "Expire Date", "Risk Durumu", "Franchise Description"]
+        st.dataframe(df_sorted[[c for c in show_cols if c in df_sorted.columns]].style.apply(style_rows, axis=1),
+                     use_container_width=True, hide_index=True)
+    else:
+        st.info("Veri yok.")
