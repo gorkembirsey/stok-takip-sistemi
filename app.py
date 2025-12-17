@@ -32,7 +32,7 @@ st.markdown("""
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
 
-        /* TABLO BAŞLIKLARI */
+        /* TABLO BAŞLIKLARI (Soft Gri) */
         thead th {
             background-color: #f0f2f6 !important; color: #31333F !important;
             font-size: 14px !important; font-weight: 600 !important;
@@ -56,8 +56,9 @@ with st.sidebar:
     uploaded_file = st.file_uploader("Günlük Excel Dosyası", type=["xlsx"])
 
     st.markdown("---")
-    st.header("🔍 Gelişmiş Arama")
-    search_query = st.text_input("Arama Yap:", placeholder="Item No, SKT, Lokasyon...")
+    st.header("🔍 Global Arama")
+    search_query = st.text_input("Arama Yap:", placeholder="Herhangi bir veri arayın...")
+    st.caption("Bu alan Excel'deki TÜM sütunları tarar.")
 
     if search_query:
         st.info(f"Aranan: **{search_query}**")
@@ -115,18 +116,12 @@ if uploaded_file:
 
             # --- 🔥 SKT VE TARİH DÜZENLEME ---
             if 'Expire' in df_stok.columns:
-                # Tarih objesine çevir
                 df_stok['Expire_Obj'] = pd.to_datetime(df_stok['Expire'], errors='coerce')
-
-                # Gün farkını hesapla (Risk için)
                 df_stok['Days_To_Expire'] = (df_stok['Expire_Obj'] - today).dt.days
 
-                # Görüntülenecek Temiz Tarih (Saat Yok) - İsim Değişikliği
+                # Tarih Formatı (Sadece YYYY-MM-DD)
                 df_stok['Expire Date'] = df_stok['Expire_Obj'].dt.date
 
-
-                # Orijinal 'Expire' sütununu kaldırıp yenisini kullanalım
-                # (İsteğe bağlı, dataframe gösteriminde seçeceğiz)
 
                 def get_risk_score(days):
                     if pd.isna(days): return "⚪ Bilinmiyor"
@@ -143,23 +138,28 @@ if uploaded_file:
                 df_stok['Risk Durumu'] = "⚪ Tarih Yok"
                 df_stok['Expire Date'] = None
 
-        # --- 2. GELİŞMİŞ FİLTRELEME ---
+        # --- 2. GELİŞMİŞ FİLTRELEME (BÜTÜN SÜTUNLAR) ---
         if search_query:
             sq = search_query.lower()
 
 
-            def filter_df(df, cols):
+            # Bu fonksiyon artık sütun ayrımı yapmaz, dataframe'deki HER ŞEYE bakar.
+            def filter_df(df):
                 if df.empty: return df
+                # Tüm sütunlarda arama yap (regex=False ile parantez hatalarını önle)
                 mask = pd.Series([False] * len(df))
-                for c in cols:
-                    if c in df.columns: mask |= df[c].astype(str).str.lower().str.contains(sq, na=False)
+                for col in df.columns:
+                    # Her sütunu string'e çevir, küçük harfe al ve ara
+                    mask = mask | df[col].astype(str).str.lower().str.contains(sq, regex=False, na=False)
                 return df[mask]
 
 
-            df_gen = filter_df(df_gen, ['Item No', 'Item Description'])
-            df_out = filter_df(df_out, ['Item No', 'Item Description'])
-            df_venlo = filter_df(df_venlo, ['Item No', 'TP Description', 'Order Number'])
-            df_stok = filter_df(df_stok, ['Item No', 'Location', 'Risk Durumu'])
+            # Tüm veri setlerini filtrele
+            df_gen = filter_df(df_gen)
+            df_out = filter_df(df_out)
+            df_venlo = filter_df(df_venlo)
+            df_yolda = filter_df(df_yolda)
+            df_stok = filter_df(df_stok)
 
         # --- 3. DASHBOARD GÖRÜNÜMÜ ---
         st.title("Stock Control Intelligence")
@@ -184,7 +184,7 @@ if uploaded_file:
             "🌍 Venlo Orders",
             "🚚 Yoldaki İthalatlar",
             "🚨 Stock Out",
-            "🔔 Alert Center"  # En Sona Taşındı
+            "🔔 Alert Center"
         ])
 
         # --- TAB 1: GENERAL ---
@@ -197,13 +197,13 @@ if uploaded_file:
             else:
                 st.info("Veri yok.")
 
-        # --- TAB 2: STOK (SADELEŞTİRİLDİ - ESKİ HALİ) ---
+        # --- TAB 2: STOK ---
         with tab2:
             if not df_stok.empty:
                 c_chart, c_data = st.columns([1, 1])
 
                 with c_chart:
-                    # Sadece Lokasyon Grafiği (Eski Hal)
+                    # Lokasyon Grafiği (İlk 12)
                     if 'Location' in df_stok.columns:
                         loc_summ = df_stok.groupby('Location')['Qty On Hand'].sum().reset_index().sort_values(
                             'Qty On Hand', ascending=False).head(12)
@@ -216,22 +216,27 @@ if uploaded_file:
 
                 with c_data:
                     st.markdown("##### 📝 Detaylı Stok Listesi")
-                    # Sadece gerekli sütunlar, Expire Date (saatsiz) ile
-                    display_cols = [c for c in df_stok.columns if
-                                    c not in ['Expire', 'Expire_Obj', 'Days_To_Expire', 'Risk Durumu']]
-                    # Expire Date'i öne alalım veya uygun yere
+                    # Expire Date (saatsiz) gösterimi için sütun seçimi
+                    # Teknik sütunları gizle (Expire_Obj, Days_To_Expire vb.)
+                    hidden_cols = ['Expire', 'Expire_Obj', 'Days_To_Expire', 'Risk Durumu']
+                    display_cols = [c for c in df_stok.columns if c not in hidden_cols]
+
+                    # Expire Date sütununu öne taşıyalım
                     if 'Expire Date' in display_cols:
-                        cols = ['Item No', 'Location', 'Qty On Hand', 'Expire Date'] + [c for c in display_cols if
-                                                                                        c not in ['Item No', 'Location',
-                                                                                                  'Qty On Hand',
-                                                                                                  'Expire Date']]
-                        st.dataframe(df_stok[cols], use_container_width=True, hide_index=True)
+                        cols_order = ['Item No', 'Location', 'Qty On Hand', 'Expire Date'] + [c for c in display_cols if
+                                                                                              c not in ['Item No',
+                                                                                                        'Location',
+                                                                                                        'Qty On Hand',
+                                                                                                        'Expire Date']]
+                        final_stok_view = df_stok[cols_order]
                     else:
-                        st.dataframe(df_stok, use_container_width=True, hide_index=True)
+                        final_stok_view = df_stok[display_cols]
+
+                    st.dataframe(final_stok_view, use_container_width=True, hide_index=True)
             else:
                 st.warning("Veri yok.")
 
-        # --- TAB 3, 4, 5 (STANDART) ---
+        # --- TAB 3, 4, 5 ---
         with tab3:
             if not df_venlo.empty:
                 st.dataframe(df_venlo, use_container_width=True, hide_index=True)
@@ -282,7 +287,6 @@ if uploaded_file:
                 df_sorted = df_stok.sort_values(by="Days_To_Expire", ascending=True)
 
 
-                # Renklendirme
                 def style_risk_rows(row):
                     val = str(row['Risk Durumu'])
                     if "🔴" in val:
@@ -294,12 +298,14 @@ if uploaded_file:
                     return [''] * len(row)
 
 
-                # Expire Date (Saatsiz) kullanıyoruz
+                # Burada Expire Date (Saatsiz) kullanıyoruz
                 cols_to_show = ["Item No", "Location", "Qty On Hand", "Expire Date", "Risk Durumu"]
-                final_df = df_sorted[cols_to_show] if set(cols_to_show).issubset(df_sorted.columns) else df_sorted
+                # Sütunların varlığını kontrol et
+                valid_cols = [c for c in cols_to_show if c in df_sorted.columns]
+                final_risk_df = df_sorted[valid_cols]
 
                 st.dataframe(
-                    final_df.style.apply(style_risk_rows, axis=1),
+                    final_risk_df.style.apply(style_risk_rows, axis=1),
                     use_container_width=True,
                     hide_index=True
                 )
