@@ -163,7 +163,7 @@ if not df_gen.empty and 'Franchise Description' in df_gen.columns:
     item_franchise_map = dict(zip(temp_map['Item No'], temp_map['Franchise Description']))
 
 
-# PROCESS
+# PROCESS FONKSİYONU
 def process_df(sheet_name, id_col, rename_to='Item No'):
     df = sheets.get(sheet_name, pd.DataFrame())
     if not df.empty:
@@ -176,6 +176,7 @@ def process_df(sheet_name, id_col, rename_to='Item No'):
     return df
 
 
+# MEVCUT SEKMELER
 df_out = process_df("Stock Out", 'Item No')
 if not df_out.empty and target_col in df_out.columns:
     df_out[target_col] = pd.to_numeric(df_out[target_col], errors='coerce') * 100
@@ -185,6 +186,10 @@ df_venlo = format_turkish_date(df_venlo, ['Line Creation Date', 'ETA', 'Request 
 
 df_yolda = process_df("Yoldaki İthalatlar", 'Ordered Item Number')
 df_yolda = format_turkish_date(df_yolda, ['Shipment Date', 'ETA'])
+
+# --- YENİ EKLENEN SEKME: KONSİNYE STOK RAPORU ---
+df_konsinye = process_df("Konsinye Stok Raporu", 'Item No')
+# Eğer özel tarih formatı gerekirse buraya eklenebilir
 
 df_stok = process_df("Stok", 'Item Number')
 if not df_stok.empty:
@@ -212,7 +217,8 @@ with st.sidebar.form("filter_form"):
     filterable_columns = ['Item No', 'Location', 'Customer PO', 'Order Number', 'Item Description', 'Risk Durumu']
     selected_filter_col = st.selectbox("1. Kriter Seçin:", filterable_columns)
     unique_values = set()
-    for d in [df_gen, df_stok, df_venlo, df_yolda, df_out]:
+    # Konsinye verisini de filtre havuzuna ekledik
+    for d in [df_gen, df_stok, df_venlo, df_yolda, df_out, df_konsinye]:
         if not d.empty and selected_filter_col in d.columns:
             unique_values.update(d[selected_filter_col].dropna().astype(str).unique())
     selected_dynamic_values = st.multiselect(f"2. {selected_filter_col} Değerleri:",
@@ -245,11 +251,20 @@ f_stok = fast_filter(df_stok)
 f_venlo = fast_filter(df_venlo)
 f_yolda = fast_filter(df_yolda)
 f_out = fast_filter(df_out)
+f_konsinye = fast_filter(df_konsinye)  # Yeni filtre
 
 # --- İNDİRME ---
 st.sidebar.markdown("---")
 if not f_stok.empty or not f_gen.empty:
-    full_data = {"General": f_gen, "Stok": f_stok, "Venlo": f_venlo, "Yolda": f_yolda, "Stock Out": f_out}
+    # İndirme paketine Konsinye'yi de ekledik
+    full_data = {
+        "General": f_gen,
+        "Stok": f_stok,
+        "Venlo": f_venlo,
+        "Yolda": f_yolda,
+        "Stock Out": f_out,
+        "Konsinye": f_konsinye
+    }
     st.sidebar.download_button("📊 Tüm Raporu İndir", data=convert_full_report(full_data),
                                file_name=f"Rapor_{datetime.date.today()}.xlsx")
 
@@ -270,8 +285,16 @@ c4.metric("📊 Listelenen Kalem", f"{len(f_gen)}")
 
 st.markdown("###")
 
-tab1, tab2, tab3, tab4, tab5, tab_alert = st.tabs(
-    ["📋 General", "📍 Stok (Depo)", "🌍 Venlo Orders", "🚚 Yoldaki İthalatlar", "🚨 Stock Out", "🔔 Alert Center"])
+# YENİ SEKME EKLENDİ (tab_konsinye)
+tab1, tab2, tab3, tab4, tab5, tab_konsinye, tab_alert = st.tabs([
+    "📋 General",
+    "📍 Stok (Depo)",
+    "🌍 Venlo Orders",
+    "🚚 Yoldaki İthalatlar",
+    "🚨 Stock Out",
+    "💼 Konsinye Stok",  # Yeni Sekme
+    "🔔 Alert Center"
+])
 
 with tab1:
     if not f_gen.empty:
@@ -323,6 +346,13 @@ with tab5:
             "SS Coverage (W/O Consignment)": st.column_config.NumberColumn("SS Coverage", format="%.1f%%")})
     else:
         st.success("Sorun yok.")
+
+# --- YENİ SEKME İÇERİĞİ ---
+with tab_konsinye:
+    if not f_konsinye.empty:
+        st.dataframe(f_konsinye, use_container_width=True, hide_index=True)
+    else:
+        st.info("Konsinye stok verisi bulunamadı veya filtreye uygun veri yok.")
 
 with tab_alert:
     st.markdown("#### ⚠️ Operasyonel Risk Paneli")
