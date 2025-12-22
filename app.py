@@ -4,29 +4,22 @@ import altair as alt
 from io import BytesIO
 import datetime
 import os
+import zipfile  # Hata yakalamak için eklendi
 
 # --- SAYFA YAPILANDIRMASI ---
 st.set_page_config(page_title="Stock Control Intelligence", layout="wide", page_icon="🧠")
 
 DATA_FILE_PATH = "master_stryker_data.xlsx"
 
-# --- CSS (AYNEN KORUNDU) ---
+# --- CSS (AYNI) ---
 st.markdown("""
     <style>
         .stApp {background-color: #F4F6F9;}
 
-        /* ALERT KARTLARI */
         .alert-card {
-            padding: 15px; 
-            border-radius: 8px; 
-            color: white; 
-            font-weight: bold; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
-            margin-bottom: 15px; 
-            text-align: center;
-            display: flex;
-            flex-direction: column; 
-            justify-content: center;
+            padding: 15px; border-radius: 8px; color: white; font-weight: bold; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 15px; 
+            text-align: center; display: flex; flex-direction: column; justify-content: center;
         }
         .bg-red {background-color: #d32f2f; border-left: 6px solid #b71c1c;}
         .bg-orange {background-color: #f57c00; border-left: 6px solid #e65100;}
@@ -35,41 +28,27 @@ st.markdown("""
         .alert-text {font-size: 16px; opacity: 0.95; margin-bottom: 5px;}
         .alert-number {font-size: 32px; font-weight: 800; line-height: 1.2;}
 
-        /* KPI KARTLARI */
         div[data-testid="stMetric"] {
-            background-color: #ffffff !important; 
-            border: 1px solid #e0e0e0; 
-            border-left: 6px solid #FFC107 !important; 
-            padding: 10px; 
-            border-radius: 6px;
+            background-color: #ffffff !important; border: 1px solid #e0e0e0; 
+            border-left: 6px solid #FFC107 !important; padding: 10px; border-radius: 6px;
         }
-
-        /* TABLO BAŞLIKLARI */
         thead th {
-            background-color: #f0f2f6 !important; 
-            color: #31333F !important; 
-            font-size: 14px !important; 
-            font-weight: 600 !important; 
+            background-color: #f0f2f6 !important; color: #31333F !important; 
+            font-size: 14px !important; font-weight: 600 !important; 
             border-bottom: 2px solid #e0e0e0 !important;
         }
         tbody tr:nth-of-type(even) {background-color: #f9f9f9;}
 
-        /* SEKMELER */
         .stTabs [data-baseweb="tab-list"] {gap: 8px;}
         .stTabs [data-baseweb="tab"] {
-            height: 40px; 
-            background-color: white; 
-            border-radius: 4px; 
-            font-weight: 600; 
-            border: 1px solid #ddd;
+            height: 40px; background-color: white; border-radius: 4px; 
+            font-weight: 600; border: 1px solid #ddd;
         }
         .stTabs [aria-selected="true"] {
-            background-color: #fff !important; 
-            color: #000 !important; 
+            background-color: #fff !important; color: #000 !important; 
             border-bottom: 3px solid #FFC107 !important;
         }
 
-        /* BUTONLAR */
         .stDownloadButton button {width: 100%; border: 1px solid #28a745; color: #28a745;}
         div[data-testid="stForm"] button {width: 100%; background-color: #FFC107; color: black; font-weight: bold; border: none;}
         button[kind="secondary"] {width: 100%;}
@@ -77,11 +56,16 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-# --- CACHE ---
+# --- CACHE VE HATA YAKALAMA (DÜZELTİLEN KISIM) ---
 @st.cache_data(show_spinner=False)
 def load_excel_data(file_path, mtime):
-    xls = pd.read_excel(file_path, sheet_name=None)
-    return {k.strip(): v for k, v in xls.items()}
+    try:
+        xls = pd.read_excel(file_path, sheet_name=None)
+        return {k.strip(): v for k, v in xls.items()}
+    except zipfile.BadZipFile:
+        return None  # Dosya bozuksa None döndür
+    except Exception as e:
+        return None
 
 
 # --- FORMATLAYICI ---
@@ -98,8 +82,10 @@ def convert_full_report(dfs_dict):
     output = BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         for sheet_name, df in dfs_dict.items():
-            safe_name = sheet_name[:30]
-            df.to_excel(writer, sheet_name=safe_name, index=False)
+            # Boş dataframe'leri yazma ve isim uzunluğunu kontrol et
+            if not df.empty:
+                safe_name = sheet_name[:30]
+                df.to_excel(writer, sheet_name=safe_name, index=False)
     return output.getvalue()
 
 
@@ -117,7 +103,7 @@ def reset_filters():
     st.session_state.search_key = ""
 
 
-# --- YAN MENÜ ---
+# --- YAN MENÜ (ADMIN) ---
 with st.sidebar:
     st.image(
         "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Stryker_Corporation_logo.svg/2560px-Stryker_Corporation_logo.svg.png",
@@ -131,18 +117,35 @@ with st.sidebar:
                 with open(DATA_FILE_PATH, "wb") as f:
                     f.write(uploaded_file.getbuffer())
                 load_excel_data.clear()
-                st.toast("Veri Güncellendi!")
+                st.toast("Veri Başarıyla Güncellendi!")
                 st.rerun()
     st.markdown("---")
 
-# --- DATA CHECK ---
+# --- DATA CHECK & RECOVERY (KURTARMA MODU) ---
+sheets = {}
 if os.path.exists(DATA_FILE_PATH):
     mtime = os.path.getmtime(DATA_FILE_PATH)
     mod_time = datetime.datetime.fromtimestamp(mtime).strftime('%d.%m.%Y %H:%M')
     st.sidebar.caption(f"📅 Veri Tarihi: {mod_time}")
-    sheets = load_excel_data(DATA_FILE_PATH, mtime)
+
+    # Veriyi yüklemeyi dene
+    loaded_data = load_excel_data(DATA_FILE_PATH, mtime)
+
+    if loaded_data is None:
+        # Eğer dosya bozuksa:
+        st.error("⚠️ Sunucudaki veri dosyası bozulmuş (BadZipFile). Otomatik olarak temizleniyor.")
+        st.warning("👉 Lütfen sol menüden 'Yönetici Girişi' yapıp Excel dosyasını TEKRAR yükleyiniz.")
+        try:
+            os.remove(DATA_FILE_PATH)  # Bozuk dosyayı sil
+            load_excel_data.clear()  # Cache temizle
+        except:
+            pass
+        st.stop()  # Uygulamayı burada durdur
+    else:
+        sheets = loaded_data
+
 else:
-    st.info("Veri yok. Yönetici girişi yapınız.")
+    st.info("👋 Sistemde veri yok. Lütfen yönetici girişi yapıp dosya yükleyin.")
     st.stop()
 
 # --- VERİ İŞLEME ---
@@ -163,7 +166,7 @@ if not df_gen.empty and 'Franchise Description' in df_gen.columns:
     item_franchise_map = dict(zip(temp_map['Item No'], temp_map['Franchise Description']))
 
 
-# PROCESS FONKSİYONU
+# PROCESS HELPER
 def process_df(sheet_name, id_col, rename_to='Item No'):
     df = sheets.get(sheet_name, pd.DataFrame())
     if not df.empty:
@@ -176,7 +179,7 @@ def process_df(sheet_name, id_col, rename_to='Item No'):
     return df
 
 
-# MEVCUT SEKMELER
+# SEKMELERİ OKU
 df_out = process_df("Stock Out", 'Item No')
 if not df_out.empty and target_col in df_out.columns:
     df_out[target_col] = pd.to_numeric(df_out[target_col], errors='coerce') * 100
@@ -187,9 +190,8 @@ df_venlo = format_turkish_date(df_venlo, ['Line Creation Date', 'ETA', 'Request 
 df_yolda = process_df("Yoldaki İthalatlar", 'Ordered Item Number')
 df_yolda = format_turkish_date(df_yolda, ['Shipment Date', 'ETA'])
 
-# --- YENİ EKLENEN SEKME: KONSİNYE STOK RAPORU ---
+# YENİ EKLENEN KISIM: KONSİNYE
 df_konsinye = process_df("Konsinye Stok Raporu", 'Item No')
-# Eğer özel tarih formatı gerekirse buraya eklenebilir
 
 df_stok = process_df("Stok", 'Item Number')
 if not df_stok.empty:
@@ -216,11 +218,13 @@ with st.sidebar.form("filter_form"):
     st.markdown("---")
     filterable_columns = ['Item No', 'Location', 'Customer PO', 'Order Number', 'Item Description', 'Risk Durumu']
     selected_filter_col = st.selectbox("1. Kriter Seçin:", filterable_columns)
+
     unique_values = set()
-    # Konsinye verisini de filtre havuzuna ekledik
+    # Konsinye dahil tüm tablolardan veri topla
     for d in [df_gen, df_stok, df_venlo, df_yolda, df_out, df_konsinye]:
         if not d.empty and selected_filter_col in d.columns:
             unique_values.update(d[selected_filter_col].dropna().astype(str).unique())
+
     selected_dynamic_values = st.multiselect(f"2. {selected_filter_col} Değerleri:",
                                              options=sorted(list(unique_values)), placeholder="Çoklu seçim yapın...",
                                              key="dynamic_val_key")
@@ -251,19 +255,14 @@ f_stok = fast_filter(df_stok)
 f_venlo = fast_filter(df_venlo)
 f_yolda = fast_filter(df_yolda)
 f_out = fast_filter(df_out)
-f_konsinye = fast_filter(df_konsinye)  # Yeni filtre
+f_konsinye = fast_filter(df_konsinye)  # Yeni
 
 # --- İNDİRME ---
 st.sidebar.markdown("---")
 if not f_stok.empty or not f_gen.empty:
-    # İndirme paketine Konsinye'yi de ekledik
     full_data = {
-        "General": f_gen,
-        "Stok": f_stok,
-        "Venlo": f_venlo,
-        "Yolda": f_yolda,
-        "Stock Out": f_out,
-        "Konsinye": f_konsinye
+        "General": f_gen, "Stok": f_stok, "Venlo": f_venlo,
+        "Yolda": f_yolda, "Stock Out": f_out, "Konsinye": f_konsinye
     }
     st.sidebar.download_button("📊 Tüm Raporu İndir", data=convert_full_report(full_data),
                                file_name=f"Rapor_{datetime.date.today()}.xlsx")
@@ -285,14 +284,14 @@ c4.metric("📊 Listelenen Kalem", f"{len(f_gen)}")
 
 st.markdown("###")
 
-# YENİ SEKME EKLENDİ (tab_konsinye)
-tab1, tab2, tab3, tab4, tab5, tab_konsinye, tab_alert = st.tabs([
+# SEKMELER
+tab1, tab2, tab3, tab4, tab5, tab6, tab_alert = st.tabs([
     "📋 General",
     "📍 Stok (Depo)",
     "🌍 Venlo Orders",
     "🚚 Yoldaki İthalatlar",
     "🚨 Stock Out",
-    "💼 Konsinye Stok",  # Yeni Sekme
+    "💼 Konsinye Stok",
     "🔔 Alert Center"
 ])
 
@@ -347,12 +346,11 @@ with tab5:
     else:
         st.success("Sorun yok.")
 
-# --- YENİ SEKME İÇERİĞİ ---
-with tab_konsinye:
+with tab6:  # YENİ SEKME
     if not f_konsinye.empty:
         st.dataframe(f_konsinye, use_container_width=True, hide_index=True)
     else:
-        st.info("Konsinye stok verisi bulunamadı veya filtreye uygun veri yok.")
+        st.info("Konsinye verisi bulunamadı.")
 
 with tab_alert:
     st.markdown("#### ⚠️ Operasyonel Risk Paneli")
@@ -395,7 +393,6 @@ with tab_alert:
 
 
         show_cols = ["Item No", "Location", "Qty On Hand", "Expire Date", "Risk Durumu", "Franchise Description"]
-        # .format ile Qty On Hand sütununu tam sayıya çeviriyoruz (5.0000 -> 5)
         st.dataframe(
             df_sorted[[c for c in show_cols if c in df_sorted.columns]]
             .style.apply(style_rows, axis=1)
