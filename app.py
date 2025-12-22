@@ -12,12 +12,12 @@ st.set_page_config(page_title="Stock Control Intelligence", layout="wide", page_
 
 DATA_FILE_PATH = "master_stryker_data.xlsx"
 
-# --- CSS (ÇİFTE KİLİT SİSTEMİ İLE GARANTİ RENKLER) ---
+# --- CSS (RENKLERİ GARANTİLEYEN KOD) ---
 st.markdown("""
     <style>
         .stApp {background-color: #F4F6F9;}
 
-        /* 1. KPI KARTLARI (BEYAZ KUTU, SARI ŞERİT) */
+        /* 1. KPI KUTULARI (Üstteki 4 Kutu - Beyaz ve Sarı Şeritli) */
         div[data-testid="stMetric"] {
             background-color: #ffffff !important; 
             border: 1px solid #e0e0e0 !important; 
@@ -26,66 +26,92 @@ st.markdown("""
             border-radius: 6px;
         }
 
-        /* 2. TABLO VE SEKMELER */
-        thead th {background-color: #f0f2f6 !important; color: #31333F !important; font-size: 14px !important;}
-        .stTabs [aria-selected="true"] {border-bottom: 3px solid #FFC107 !important;}
+        /* 2. TABLO BAŞLIKLARI */
+        thead th {
+            background-color: #f0f2f6 !important; 
+            color: #31333F !important; 
+            font-size: 14px !important; 
+            font-weight: 600 !important; 
+            border-bottom: 2px solid #e0e0e0 !important;
+        }
+        tbody tr:nth-of-type(even) {background-color: #f9f9f9;}
 
         /* 3. İNDİRME BUTONU (KÜÇÜK YEŞİL) */
         .stDownloadButton button {
-            border: 1px solid #28a745 !important; color: #28a745 !important;
-            background-color: white !important; padding: 5px 15px !important;
-            font-size: 14px !important; height: auto !important;
+            border: 1px solid #28a745 !important; 
+            color: #28a745 !important;
+            background-color: white !important;
+            font-size: 14px !important;
+            padding: 5px 15px !important;
+            height: auto !important;
         }
-        div[data-testid="stForm"] button {background-color: #FFC107 !important; color: black !important;}
 
-        /* --- 4. ALERT CENTER RENKLİ BUTONLARI (GARANTİ) --- */
-        /* Hem 1-2-3 (Eğer tek satırsa) Hem 5-6-7 (Eğer KPI varsa) hedefleniyor */
+        /* 4. SIDEBAR BUTONU */
+        div[data-testid="stForm"] button {background-color: #FFC107 !important; color: black !important; border: none !important;}
 
-        /* KIRMIZI BUTON (1. veya 5. Kolon) */
-        div[data-testid="column"]:nth-of-type(1) div[data-testid="stButton"] button,
-        div[data-testid="column"]:nth-of-type(5) div[data-testid="stButton"] button {
-            background-color: #d32f2f !important; color: white !important; border: none !important;
-            border-left: 10px solid #b71c1c !important; border-radius: 8px !important;
-            padding: 20px 0px !important; height: 100px !important; box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important;
+        /* --- 5. ALERT CENTER RENKLİ BUTONLARI (GARANTİ ÇÖZÜM) --- */
+        /* Hem 1-2-3 (Eğer tek başınaysa) Hem 5-6-7 (Eğer üstte KPI varsa) hedefleniyor */
+
+        /* KIRMIZI BUTON (1. veya 5. Sütun) */
+        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(1) div[data-testid="stButton"] button,
+        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(5) div[data-testid="stButton"] button {
+            background-color: #d32f2f !important;
+            color: white !important;
+            border: none !important;
+            border-left: 10px solid #b71c1c !important;
+            border-radius: 8px !important;
+            padding: 20px 0px !important;
+            height: 100px !important;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important;
         }
-        div[data-testid="column"]:nth-of-type(1) div[data-testid="stButton"] button:hover,
-        div[data-testid="column"]:nth-of-type(5) div[data-testid="stButton"] button:hover {
+        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(1) div[data-testid="stButton"] button:hover,
+        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(5) div[data-testid="stButton"] button:hover {
             background-color: #b71c1c !important; transform: scale(1.02);
         }
-        div[data-testid="column"]:nth-of-type(1) div[data-testid="stButton"] button p,
-        div[data-testid="column"]:nth-of-type(5) div[data-testid="stButton"] button p {
+        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(1) div[data-testid="stButton"] button p,
+        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(5) div[data-testid="stButton"] button p {
             color: white !important; font-size: 24px !important; font-weight: 800 !important;
         }
 
-        /* TURUNCU BUTON (2. veya 6. Kolon) */
-        div[data-testid="column"]:nth-of-type(2) div[data-testid="stButton"] button,
-        div[data-testid="column"]:nth-of-type(6) div[data-testid="stButton"] button {
-            background-color: #f57c00 !important; color: white !important; border: none !important;
-            border-left: 10px solid #e65100 !important; border-radius: 8px !important;
-            padding: 20px 0px !important; height: 100px !important; box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important;
+        /* TURUNCU BUTON (2. veya 6. Sütun) */
+        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(2) div[data-testid="stButton"] button,
+        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(6) div[data-testid="stButton"] button {
+            background-color: #f57c00 !important;
+            color: white !important;
+            border: none !important;
+            border-left: 10px solid #e65100 !important;
+            border-radius: 8px !important;
+            padding: 20px 0px !important;
+            height: 100px !important;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important;
         }
-        div[data-testid="column"]:nth-of-type(2) div[data-testid="stButton"] button:hover,
-        div[data-testid="column"]:nth-of-type(6) div[data-testid="stButton"] button:hover {
+        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(2) div[data-testid="stButton"] button:hover,
+        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(6) div[data-testid="stButton"] button:hover {
             background-color: #e65100 !important; transform: scale(1.02);
         }
-        div[data-testid="column"]:nth-of-type(2) div[data-testid="stButton"] button p,
-        div[data-testid="column"]:nth-of-type(6) div[data-testid="stButton"] button p {
+        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(2) div[data-testid="stButton"] button p,
+        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(6) div[data-testid="stButton"] button p {
             color: white !important; font-size: 24px !important; font-weight: 800 !important;
         }
 
-        /* GRİ BUTON (3. veya 7. Kolon) */
-        div[data-testid="column"]:nth-of-type(3) div[data-testid="stButton"] button,
-        div[data-testid="column"]:nth-of-type(7) div[data-testid="stButton"] button {
-            background-color: #616161 !important; color: white !important; border: none !important;
-            border-left: 10px solid #212121 !important; border-radius: 8px !important;
-            padding: 20px 0px !important; height: 100px !important; box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important;
+        /* GRİ BUTON (3. veya 7. Sütun) */
+        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(3) div[data-testid="stButton"] button,
+        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(7) div[data-testid="stButton"] button {
+            background-color: #616161 !important;
+            color: white !important;
+            border: none !important;
+            border-left: 10px solid #212121 !important;
+            border-radius: 8px !important;
+            padding: 20px 0px !important;
+            height: 100px !important;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important;
         }
-        div[data-testid="column"]:nth-of-type(3) div[data-testid="stButton"] button:hover,
-        div[data-testid="column"]:nth-of-type(7) div[data-testid="stButton"] button:hover {
+        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(3) div[data-testid="stButton"] button:hover,
+        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(7) div[data-testid="stButton"] button:hover {
             background-color: #424242 !important; transform: scale(1.02);
         }
-        div[data-testid="column"]:nth-of-type(3) div[data-testid="stButton"] button p,
-        div[data-testid="column"]:nth-of-type(7) div[data-testid="stButton"] button p {
+        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(3) div[data-testid="stButton"] button p,
+        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(7) div[data-testid="stButton"] button p {
             color: white !important; font-size: 24px !important; font-weight: 800 !important;
         }
 
@@ -97,7 +123,7 @@ if 'alert_filter_state' not in st.session_state:
     st.session_state.alert_filter_state = 'all'
 
 
-# --- CACHE VE VERİ İŞLEME ---
+# --- VERİ İŞLEME ---
 @st.cache_data(show_spinner=False)
 def load_excel_data(file_path, mtime):
     try:
@@ -107,7 +133,6 @@ def load_excel_data(file_path, mtime):
         return None
 
 
-# --- FORMATLAYICI ---
 def format_turkish_date(df, columns):
     for col in columns:
         if col in df.columns:
@@ -116,7 +141,6 @@ def format_turkish_date(df, columns):
     return df
 
 
-# --- İNDİRME ---
 def convert_full_report(dfs_dict):
     output = BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
@@ -124,8 +148,7 @@ def convert_full_report(dfs_dict):
             if not df.empty:
                 cols_drop = ['Expire_Obj', 'Days_To_Expire', 'Expire']
                 temp_df = df.drop(columns=[c for c in cols_drop if c in df.columns], errors='ignore')
-                safe_name = sheet_name[:30]
-                temp_df.to_excel(writer, sheet_name=safe_name, index=False)
+                temp_df.to_excel(writer, sheet_name=sheet_name[:30], index=False)
     return output.getvalue()
 
 
@@ -174,6 +197,10 @@ if os.path.exists(DATA_FILE_PATH):
     loaded_data = load_excel_data(DATA_FILE_PATH, mtime)
     if loaded_data is None:
         st.error("⚠️ Dosya okunamadı. Lütfen yönetici panelinden tekrar yükleyiniz.")
+        try:
+            os.remove(DATA_FILE_PATH); load_excel_data.clear()
+        except:
+            pass
         st.stop()
     else:
         sheets = loaded_data
@@ -255,7 +282,7 @@ if not df_stok.empty:
         df_stok['Risk Durumu'] = "⚪ Tarih Yok"
         df_stok['Expire Date'] = ""
 
-# --- SIDEBAR FİLTRE ---
+# --- FİLTRE ---
 st.sidebar.header("🎯 Filtre Paneli")
 st.sidebar.button("Filtreleri Temizle", on_click=reset_filters, type="secondary")
 
@@ -378,7 +405,7 @@ with tab6:
     else:
         st.info("Konsinye verisi yok.")
 
-# 7. ALERT CENTER
+# 7. ALERT CENTER (GARANTİ RENKLER)
 with tab_alert:
     st.markdown("#### ⚠️ Operasyonel Risk Paneli")
 
@@ -400,6 +427,7 @@ with tab_alert:
 
 
     b1, b2, b3 = st.columns(3)
+    # Etiketler
     label_red = f"Kritik Stok (<6 Ay)\n\n{len(red_risk)}"
     label_orange = f"Riskli Stok (6-12 Ay)\n\n{orange_risk}"
     label_gray = f"Stock Out\n\n{stock_out_count}"
@@ -441,10 +469,12 @@ with tab_alert:
                          column_config={
                              "SS Coverage (W/O Consignment)": st.column_config.NumberColumn(format="%.1f%%")})
         else:
+            # GİZLE
             cols_hide = ['Expire', 'Expire_Obj', 'Days_To_Expire', 'Franchise Description']
             available_cols = [c for c in display_df.columns if c not in cols_hide]
 
-            # --- İSTENEN SÜTUN SIRALAMASI: Item No, Qty, UM, Location... ---
+            # --- SIRALAMA: UM, Qty Yanında ---
+            # Item No, Qty On Hand, UM, Location, Lot/Serial Ref, Expire Date, Risk Durumu, Site
             desired_order = ['Item No', 'Qty On Hand', 'UM', 'Location', 'Lot/Serial Ref', 'Expire Date', 'Risk Durumu',
                              'Site']
             final_cols = [c for c in desired_order if c in available_cols] + [c for c in available_cols if
