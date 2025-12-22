@@ -11,62 +11,33 @@ st.set_page_config(page_title="Stock Control Intelligence", layout="wide", page_
 
 DATA_FILE_PATH = "master_stryker_data.xlsx"
 
-# --- CSS (KESİN ÇALIŞAN RENKLER VE GÖRÜNÜM) ---
+# --- CSS (RENKLERİ ZORLA GETİREN KOD) ---
 st.markdown("""
     <style>
         .stApp {background-color: #F4F6F9;}
 
-        /* 1. KPI KUTULARI (BEYAZ KUTU, SARI ŞERİT) */
+        /* 1. ÜSTTEKİ 4 KUTU (KPI) - BEYAZ VE SARI ÇİZGİLİ */
         div[data-testid="stMetric"] {
             background-color: #ffffff !important; 
             border: 1px solid #e0e0e0 !important; 
             border-left: 8px solid #FFC107 !important; 
-            padding: 10px !important; 
+            padding: 15px !important; 
             border-radius: 6px !important;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
         }
+        div[data-testid="stMetric"] label { color: #444 !important; font-weight: 600 !important; }
+        div[data-testid="stMetric"] div[data-testid="stMetricValue"] { color: #000 !important; font-weight: 700 !important; }
 
-        /* 2. TABLO BAŞLIKLARI */
-        thead th {
-            background-color: #f0f2f6 !important; 
-            color: #31333F !important; 
-            font-size: 14px !important; 
-            font-weight: 600 !important; 
-            border-bottom: 2px solid #e0e0e0 !important;
-        }
-        tbody tr:nth-of-type(even) {background-color: #f9f9f9;}
+        /* 2. ALERT CENTER BUTONLARI (RENKLİ) */
+        /* Bu CSS sadece 'stButton' içeren butonları hedefler, KPI kartlarını bozmaz */
 
-        /* 3. SEKMELER */
-        .stTabs [aria-selected="true"] {
-            background-color: #fff !important; 
-            color: #000 !important; 
-            border-bottom: 3px solid #FFC107 !important;
-        }
-
-        /* 4. İNDİRME BUTONU (KÜÇÜK) */
-        .stDownloadButton button {
-            border: 1px solid #28a745 !important; 
-            color: #28a745 !important;
-            background-color: white !important;
-            font-size: 14px !important;
-            padding: 5px 15px !important;
-            height: auto !important;
-        }
-
-        /* 5. SIDEBAR BUTONU */
-        div[data-testid="stForm"] button {background-color: #FFC107 !important; color: black !important; border: none !important;}
-
-        /* --- 6. ALERT CENTER RENKLİ BUTONLAR (AGRESİF SEÇİCİLER) --- */
-        /* Burada tüm 'column'lar içindeki butonları hedefliyoruz. */
-
-        /* KIRMIZI BUTON (1. Sütun) */
+        /* KIRMIZI BUTON (1. Sırada) */
         div[data-testid="column"]:nth-of-type(1) div[data-testid="stButton"] button {
             background-color: #d32f2f !important;
             color: white !important;
             border: none !important;
-            border-left: 10px solid #b71c1c !important;
+            border-left: 12px solid #b71c1c !important;
             border-radius: 8px !important;
-            padding: 20px 0px !important;
             height: 100px !important;
             box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important;
         }
@@ -77,14 +48,13 @@ st.markdown("""
             color: white !important; font-size: 22px !important; font-weight: 800 !important;
         }
 
-        /* TURUNCU BUTON (2. Sütun) */
+        /* TURUNCU BUTON (2. Sırada) */
         div[data-testid="column"]:nth-of-type(2) div[data-testid="stButton"] button {
             background-color: #f57c00 !important;
             color: white !important;
             border: none !important;
-            border-left: 10px solid #e65100 !important;
+            border-left: 12px solid #e65100 !important;
             border-radius: 8px !important;
-            padding: 20px 0px !important;
             height: 100px !important;
             box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important;
         }
@@ -95,14 +65,13 @@ st.markdown("""
             color: white !important; font-size: 22px !important; font-weight: 800 !important;
         }
 
-        /* GRİ BUTON (3. Sütun) */
+        /* GRİ BUTON (3. Sırada) */
         div[data-testid="column"]:nth-of-type(3) div[data-testid="stButton"] button {
             background-color: #616161 !important;
             color: white !important;
             border: none !important;
-            border-left: 10px solid #212121 !important;
+            border-left: 12px solid #212121 !important;
             border-radius: 8px !important;
-            padding: 20px 0px !important;
             height: 100px !important;
             box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important;
         }
@@ -113,6 +82,22 @@ st.markdown("""
             color: white !important; font-size: 22px !important; font-weight: 800 !important;
         }
 
+        /* 3. DİĞER AYARLAR */
+        thead th {background-color: #f0f2f6 !important; color: #31333F !important; font-size: 14px !important;}
+        .stTabs [aria-selected="true"] {border-bottom: 3px solid #FFC107 !important;}
+
+        /* İndirme Butonu (Küçük Yeşil) */
+        .stDownloadButton button {
+            border: 1px solid #28a745 !important; 
+            color: #28a745 !important; 
+            background-color: white !important;
+            font-size: 14px !important;
+            padding: 5px 15px !important;
+            height: auto !important;
+        }
+        /* Sidebar Butonu */
+        div[data-testid="stForm"] button {background-color: #FFC107 !important; color: black !important; border: none !important;}
+
     </style>
 """, unsafe_allow_html=True)
 
@@ -121,7 +106,7 @@ if 'alert_filter_state' not in st.session_state:
     st.session_state.alert_filter_state = 'all'
 
 
-# --- VERİ İŞLEME (SAĞLAM) ---
+# --- VERİ İŞLEME ---
 @st.cache_data(show_spinner=False)
 def load_and_process_data(file_path, mtime):
     try:
@@ -150,10 +135,9 @@ def load_and_process_data(file_path, mtime):
         # 1. GENERAL
         df_gen = sheets.get("General", pd.DataFrame())
         df_gen = clean_df(df_gen)
-        # Yüzdeyi elle çarpmıyoruz, column config halledecek
 
         item_franchise_map = {}
-        if not df_gen.empty and 'Franchise Description' in df_gen.columns:
+        if not df_gen.empty and 'Franchise Description' in df_gen.columns and 'Item No' in df_gen.columns:
             temp_map = df_gen[['Item No', 'Franchise Description']].drop_duplicates(subset=['Item No'])
             item_franchise_map = dict(zip(temp_map['Item No'], temp_map['Franchise Description']))
 
@@ -304,12 +288,10 @@ with st.sidebar.form("filter_form"):
     filterable_columns = ['Item No', 'Location', 'Customer PO', 'Order Number', 'Item Description', 'Risk Durumu',
                           'Site']
     selected_filter_col = st.selectbox("1. Kriter Seçin:", filterable_columns)
-
     unique_values = set()
     for d in [df_gen, df_stok, df_venlo, df_yolda, df_out, df_konsinye]:
         if not d.empty and selected_filter_col in d.columns:
             unique_values.update(d[selected_filter_col].dropna().astype(str).unique())
-
     selected_dynamic_values = st.multiselect(f"2. {selected_filter_col} Değerleri:",
                                              options=sorted(list(unique_values)), placeholder="Çoklu seçim yapın...",
                                              key="dynamic_val_key")
@@ -442,6 +424,7 @@ with tab_alert:
 
 
     b1, b2, b3 = st.columns(3)
+
     label_red = f"Kritik Stok (<6 Ay)\n\n{len(red_risk)}"
     label_orange = f"Riskli Stok (6-12 Ay)\n\n{orange_risk}"
     label_gray = f"Stock Out\n\n{stock_out_count}"
@@ -487,8 +470,7 @@ with tab_alert:
             cols_hide = ['Expire', 'Expire_Obj', 'Days_To_Expire', 'Franchise Description']
             available_cols = [c for c in display_df.columns if c not in cols_hide]
 
-            # --- SIRALAMA (UM, Qty Yanına Geldi) ---
-            # Item No, Qty On Hand, UM, Location, Lot/Serial Ref, Expire Date, Risk Durumu, Site
+            # --- İSTENEN SÜTUN SIRALAMASI: Item No, Qty, UM, Location... ---
             desired_order = ['Item No', 'Qty On Hand', 'UM', 'Location', 'Lot/Serial Ref', 'Expire Date', 'Risk Durumu',
                              'Site']
             final_cols = [c for c in desired_order if c in available_cols] + [c for c in available_cols if
@@ -508,7 +490,6 @@ with tab_alert:
                 return [''] * len(row)
 
 
-            # Adet Tam Sayı Formatı
             st.dataframe(
                 final_df_view.style.apply(style_rows, axis=1).format({"Qty On Hand": "{:.0f}"}),
                 use_container_width=True,
