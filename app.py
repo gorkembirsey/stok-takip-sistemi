@@ -11,12 +11,12 @@ st.set_page_config(page_title="Stock Control Intelligence", layout="wide", page_
 
 DATA_FILE_PATH = "master_stryker_data.xlsx"
 
-# --- CSS (ÖZEL RENKLENDİRME) ---
+# --- CSS (RENKLİ KUTUCUKLAR GERİ GELDİ!) ---
 st.markdown("""
     <style>
         .stApp {background-color: #F4F6F9;}
 
-        /* KPI KARTLARI (Ana Sayfa) */
+        /* Genel KPI Kartları (Sarı Kenarlı) */
         div[data-testid="stMetric"] {
             background-color: #ffffff !important; 
             border: 1px solid #e0e0e0; 
@@ -24,98 +24,85 @@ st.markdown("""
             padding: 10px; 
             border-radius: 6px;
         }
-
-        /* TABLO BAŞLIKLARI */
+        /* Tablo Stilleri */
         thead th {
-            background-color: #f0f2f6 !important; 
-            color: #31333F !important; 
-            font-size: 14px !important; 
-            font-weight: 600 !important; 
+            background-color: #f0f2f6 !important; color: #31333F !important; 
+            font-size: 14px !important; font-weight: 600 !important; 
             border-bottom: 2px solid #e0e0e0 !important;
         }
         tbody tr:nth-of-type(even) {background-color: #f9f9f9;}
 
-        /* SEKMELER */
+        /* Sekme Stilleri */
         .stTabs [data-baseweb="tab-list"] {gap: 8px;}
         .stTabs [data-baseweb="tab"] {
-            height: 40px; 
-            background-color: white; 
-            border-radius: 4px; 
-            font-weight: 600; 
-            border: 1px solid #ddd;
+            height: 40px; background-color: white; border-radius: 4px; 
+            font-weight: 600; border: 1px solid #ddd;
         }
         .stTabs [aria-selected="true"] {
-            background-color: #fff !important; 
-            color: #000 !important; 
+            background-color: #fff !important; color: #000 !important; 
             border-bottom: 3px solid #FFC107 !important;
         }
 
-        /* SIDEBAR BUTONLARI */
+        /* Sidebar Butonları */
         .stDownloadButton button {width: 100%; border: 1px solid #28a745; color: #28a745;}
         div[data-testid="stForm"] button {width: 100%; background-color: #FFC107; color: black; font-weight: bold; border: none;}
         button[kind="secondary"] {width: 100%;}
 
-        /* --- ALERT CENTER RENKLİ BUTONLAR (ANA EKRAN) --- */
+        /* --- ALERT CENTER RENKLİ BUTONLAR (İŞTE BURASI DÜZELDİ) --- */
 
-        /* 1. Buton: KIRMIZI (Kritik) */
+        /* 1. Kırmızı Kutu (Kritik) */
         section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(1) div[data-testid="stButton"] button {
-            background-color: #d32f2f !important;
-            color: white !important;
+            background-color: #d32f2f !important; 
+            color: white !important; 
             border: none !important;
-            border-radius: 8px !important;
-            padding: 20px 0px !important;
-            font-size: 20px !important;
-            font-weight: 700 !important;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important;
-            height: 100px !important;
+            border-radius: 8px !important; 
+            padding: 15px 0px !important; 
+            font-weight: 700 !important; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important; 
+            height: auto !important;
             transition: all 0.2s ease-in-out;
         }
         section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(1) div[data-testid="stButton"] button:hover {
-            background-color: #b71c1c !important;
-            transform: scale(1.02);
+            background-color: #b71c1c !important; transform: scale(1.02);
         }
 
-        /* 2. Buton: TURUNCU (Riskli) */
+        /* 2. Turuncu Kutu (Riskli) */
         section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(2) div[data-testid="stButton"] button {
-            background-color: #f57c00 !important;
-            color: white !important;
+            background-color: #f57c00 !important; 
+            color: white !important; 
             border: none !important;
-            border-radius: 8px !important;
-            padding: 20px 0px !important;
-            font-size: 20px !important;
-            font-weight: 700 !important;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important;
-            height: 100px !important;
+            border-radius: 8px !important; 
+            padding: 15px 0px !important; 
+            font-weight: 700 !important; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important; 
+            height: auto !important;
             transition: all 0.2s ease-in-out;
         }
         section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(2) div[data-testid="stButton"] button:hover {
-            background-color: #e65100 !important;
-            transform: scale(1.02);
+            background-color: #e65100 !important; transform: scale(1.02);
         }
 
-        /* 3. Buton: GRİ (Stock Out) */
+        /* 3. Gri Kutu (Stock Out) */
         section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(3) div[data-testid="stButton"] button {
-            background-color: #616161 !important;
-            color: white !important;
+            background-color: #616161 !important; 
+            color: white !important; 
             border: none !important;
-            border-radius: 8px !important;
-            padding: 20px 0px !important;
-            font-size: 20px !important;
-            font-weight: 700 !important;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important;
-            height: 100px !important;
+            border-radius: 8px !important; 
+            padding: 15px 0px !important; 
+            font-weight: 700 !important; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important; 
+            height: auto !important;
             transition: all 0.2s ease-in-out;
         }
         section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(3) div[data-testid="stButton"] button:hover {
-            background-color: #424242 !important;
-            transform: scale(1.02);
+            background-color: #424242 !important; transform: scale(1.02);
         }
 
-        /* Satır içi metin düzeni */
+        /* Buton içi yazı boyutlarını ayarla */
         div[data-testid="stButton"] button p {
-            font-size: 24px !important;
+            font-size: 20px !important; 
+            line-height: 1.4 !important;
         }
-
     </style>
 """, unsafe_allow_html=True)
 
@@ -124,25 +111,93 @@ if 'alert_filter_state' not in st.session_state:
     st.session_state.alert_filter_state = 'all'
 
 
-# --- CACHE ---
+# --- TURBO VERİ YÜKLEYİCİ (HIZLI MOD) ---
 @st.cache_data(show_spinner=False)
-def load_excel_data(file_path, mtime):
+def load_and_process_data(file_path, mtime):
     try:
         xls = pd.read_excel(file_path, sheet_name=None)
-        return {k.strip(): v for k, v in xls.items()}
+        sheets = {k.strip(): v for k, v in xls.items()}
+        today = datetime.datetime.now()
+        target_col = 'SS Coverage (W/O Consignment)'
+
+        df_gen = sheets.get("General", pd.DataFrame())
+        if not df_gen.empty:
+            df_gen.columns = df_gen.columns.str.strip()
+            if 'Item No' in df_gen.columns: df_gen['Item No'] = df_gen['Item No'].astype(str).str.strip()
+            if target_col in df_gen.columns: df_gen[target_col] = pd.to_numeric(df_gen[target_col],
+                                                                                errors='coerce') * 100
+
+        item_franchise_map = {}
+        if not df_gen.empty and 'Franchise Description' in df_gen.columns:
+            temp_map = df_gen[['Item No', 'Franchise Description']].drop_duplicates(subset=['Item No'])
+            item_franchise_map = dict(zip(temp_map['Item No'], temp_map['Franchise Description']))
+
+        def clean_df(df, id_col, rename_to='Item No'):
+            if df.empty: return df
+            df.columns = df.columns.str.strip()
+            if id_col in df.columns:
+                df.rename(columns={id_col: rename_to}, inplace=True)
+                df[rename_to] = df[rename_to].astype(str).str.strip()
+                if 'Franchise Description' not in df.columns:
+                    df['Franchise Description'] = df[rename_to].map(item_franchise_map)
+            return df
+
+        def date_fmt(df, cols):
+            for col in cols:
+                if col in df.columns:
+                    df[col] = pd.to_datetime(df[col], errors='coerce')
+                    df[col] = df[col].dt.strftime('%d.%m.%Y').fillna('')
+            return df
+
+        df_out = clean_df(sheets.get("Stock Out", pd.DataFrame()), 'Item No')
+        if not df_out.empty and target_col in df_out.columns:
+            df_out[target_col] = pd.to_numeric(df_out[target_col], errors='coerce') * 100
+
+        df_venlo = clean_df(sheets.get("Venlo Orders", pd.DataFrame()), 'Item Code')
+        df_venlo = date_fmt(df_venlo, ['Line Creation Date', 'ETA', 'Request Date', 'Line Promise Date'])
+
+        df_yolda = clean_df(sheets.get("Yoldaki İthalatlar", pd.DataFrame()), 'Ordered Item Number')
+        df_yolda = date_fmt(df_yolda, ['Shipment Date', 'ETA'])
+
+        df_konsinye = clean_df(sheets.get("Konsinye Stok Raporu", pd.DataFrame()), 'Item No')
+
+        df_stok = clean_df(sheets.get("Stok", pd.DataFrame()), 'Item Number')
+        if not df_stok.empty:
+            if 'Qty On Hand' in df_stok.columns:
+                df_stok['Qty On Hand'] = pd.to_numeric(df_stok['Qty On Hand'], errors='coerce').fillna(0)
+
+            if 'Expire' in df_stok.columns:
+                df_stok['Expire_Obj'] = pd.to_datetime(df_stok['Expire'], errors='coerce')
+                df_stok['Days_To_Expire'] = (df_stok['Expire_Obj'] - today).dt.days
+                df_stok['Expire Date'] = df_stok['Expire_Obj'].dt.strftime('%d.%m.%Y').fillna('')
+
+                def calc_risk(d):
+                    if pd.isna(d): return "⚪ Bilinmiyor"
+                    if d < 180:
+                        return "🔴 Kritik (<6 Ay)"
+                    elif d < 365:
+                        return "🟠 Riskli (6-12 Ay)"
+                    elif d >= 365:
+                        return "🟢 Güvenli (>12 Ay)"
+                    return "⚪ Bilinmiyor"
+
+                df_stok['Risk Durumu'] = df_stok['Days_To_Expire'].apply(calc_risk)
+            else:
+                df_stok['Risk Durumu'] = "⚪ Tarih Yok"
+                df_stok['Expire Date'] = ""
+
+        all_franchises = sorted([x for x in list(set(item_franchise_map.values())) if str(x) != 'nan'])
+
+        return {
+            "General": df_gen, "Stok": df_stok, "Venlo": df_venlo,
+            "Yolda": df_yolda, "Out": df_out, "Konsinye": df_konsinye,
+            "Franchises": all_franchises, "Map": item_franchise_map
+        }
+
     except zipfile.BadZipFile:
         return None
     except Exception as e:
         return None
-
-
-# --- FORMATLAYICI ---
-def format_turkish_date(df, columns):
-    for col in columns:
-        if col in df.columns:
-            df[col] = pd.to_datetime(df[col], errors='coerce')
-            df[col] = df[col].dt.strftime('%d.%m.%Y').fillna('')
-    return df
 
 
 # --- İNDİRME ---
@@ -184,101 +239,56 @@ with st.sidebar:
             if uploaded_file is not None:
                 with open(DATA_FILE_PATH, "wb") as f:
                     f.write(uploaded_file.getbuffer())
-                load_excel_data.clear()
+                load_and_process_data.clear()
                 st.toast("Veri Güncellendi!")
                 st.rerun()
     st.markdown("---")
 
-# --- DATA CHECK ---
-sheets = {}
+# --- DATA LOAD (TURBO) ---
+processed_data = {}
 if os.path.exists(DATA_FILE_PATH):
     mtime = os.path.getmtime(DATA_FILE_PATH)
     mod_time = datetime.datetime.fromtimestamp(mtime).strftime('%d.%m.%Y %H:%M')
     st.sidebar.caption(f"📅 Veri Tarihi: {mod_time}")
 
-    loaded_data = load_excel_data(DATA_FILE_PATH, mtime)
-    if loaded_data is None:
+    data_bundle = load_and_process_data(DATA_FILE_PATH, mtime)
+    if data_bundle is None:
         st.error("⚠️ Dosya bozuk (BadZipFile). Yönetici panelinden tekrar yükleyiniz.")
         try:
-            os.remove(DATA_FILE_PATH); load_excel_data.clear()
+            os.remove(DATA_FILE_PATH); load_and_process_data.clear()
         except:
             pass
         st.stop()
     else:
-        sheets = loaded_data
+        processed_data = data_bundle
 else:
     st.info("Veri yok. Yönetici girişi yapınız.")
     st.stop()
 
-# --- VERİ İŞLEME ---
-target_col = 'SS Coverage (W/O Consignment)'
-today = datetime.datetime.now()
-
-df_gen = sheets.get("General", pd.DataFrame())
-if not df_gen.empty:
-    df_gen.columns = df_gen.columns.str.strip()
-    if 'Item No' in df_gen.columns: df_gen['Item No'] = df_gen['Item No'].astype(str).str.strip()
-    if target_col in df_gen.columns: df_gen[target_col] = pd.to_numeric(df_gen[target_col], errors='coerce') * 100
-
-item_franchise_map = {}
-if not df_gen.empty and 'Franchise Description' in df_gen.columns:
-    temp_map = df_gen[['Item No', 'Franchise Description']].drop_duplicates(subset=['Item No'])
-    item_franchise_map = dict(zip(temp_map['Item No'], temp_map['Franchise Description']))
-
-
-def process_df(sheet_name, id_col, rename_to='Item No'):
-    df = sheets.get(sheet_name, pd.DataFrame())
-    if not df.empty:
-        df.columns = df.columns.str.strip()
-        if id_col in df.columns:
-            df.rename(columns={id_col: rename_to}, inplace=True)
-            df[rename_to] = df[rename_to].astype(str).str.strip()
-            if 'Franchise Description' not in df.columns:
-                df['Franchise Description'] = df[rename_to].map(item_franchise_map)
-    return df
-
-
-df_out = process_df("Stock Out", 'Item No')
-if not df_out.empty and target_col in df_out.columns:
-    df_out[target_col] = pd.to_numeric(df_out[target_col], errors='coerce') * 100
-
-df_venlo = process_df("Venlo Orders", 'Item Code')
-df_venlo = format_turkish_date(df_venlo, ['Line Creation Date', 'ETA', 'Request Date', 'Line Promise Date'])
-
-df_yolda = process_df("Yoldaki İthalatlar", 'Ordered Item Number')
-df_yolda = format_turkish_date(df_yolda, ['Shipment Date', 'ETA'])
-
-df_konsinye = process_df("Konsinye Stok Raporu", 'Item No')
-
-df_stok = process_df("Stok", 'Item Number')
-if not df_stok.empty:
-    if 'Qty On Hand' in df_stok.columns: df_stok['Qty On Hand'] = pd.to_numeric(df_stok['Qty On Hand'],
-                                                                                errors='coerce').fillna(0)
-    if 'Expire' in df_stok.columns:
-        df_stok['Expire_Obj'] = pd.to_datetime(df_stok['Expire'], errors='coerce')
-        df_stok['Days_To_Expire'] = (df_stok['Expire_Obj'] - today).dt.days
-        df_stok['Expire Date'] = df_stok['Expire_Obj'].dt.strftime('%d.%m.%Y').fillna('')
-        df_stok['Risk Durumu'] = df_stok['Days_To_Expire'].apply(lambda d: "🔴 Kritik (<6 Ay)" if d < 180 else (
-            "🟠 Riskli (6-12 Ay)" if d < 365 else ("🟢 Güvenli (>12 Ay)" if d >= 365 else "⚪ Bilinmiyor")))
-    else:
-        df_stok['Risk Durumu'] = "⚪ Tarih Yok"
-        df_stok['Expire Date'] = ""
+df_gen = processed_data["General"]
+df_stok = processed_data["Stok"]
+df_venlo = processed_data["Venlo"]
+df_yolda = processed_data["Yolda"]
+df_out = processed_data["Out"]
+df_konsinye = processed_data["Konsinye"]
+all_franchises = processed_data["Franchises"]
 
 # --- SIDEBAR FİLTRE ---
 st.sidebar.header("🎯 Filtre Paneli")
 st.sidebar.button("Filtreleri Temizle", on_click=reset_filters, type="secondary")
 
 with st.sidebar.form("filter_form"):
-    all_franchises = sorted([x for x in list(set(item_franchise_map.values())) if str(x) != 'nan'])
     selected_franchises = st.multiselect("İş Birimi (Franchise):", options=all_franchises, placeholder="Tümü",
                                          key="franchise_key")
     st.markdown("---")
     filterable_columns = ['Item No', 'Location', 'Customer PO', 'Order Number', 'Item Description', 'Risk Durumu']
     selected_filter_col = st.selectbox("1. Kriter Seçin:", filterable_columns)
+
     unique_values = set()
     for d in [df_gen, df_stok, df_venlo, df_yolda, df_out, df_konsinye]:
         if not d.empty and selected_filter_col in d.columns:
             unique_values.update(d[selected_filter_col].dropna().astype(str).unique())
+
     selected_dynamic_values = st.multiselect(f"2. {selected_filter_col} Değerleri:",
                                              options=sorted(list(unique_values)), placeholder="Çoklu seçim yapın...",
                                              key="dynamic_val_key")
@@ -287,7 +297,7 @@ with st.sidebar.form("filter_form"):
     submitted = st.form_submit_button("🚀 FİLTRELERİ UYGULA")
 
 
-# --- FİLTRE MOTORU ---
+# --- FİLTRE MOTORU (HIZLI) ---
 def fast_filter(df):
     if df.empty: return df
     mask = pd.Series(True, index=df.index)
@@ -422,11 +432,12 @@ with tab_alert:
 
     b1, b2, b3 = st.columns(3)
 
+    # HTML Etiketleri (Renkler CSS'ten geliyor, burası sadece metin)
     label_red = f"Kritik Stok (<6 Ay)\n\n{len(red_risk)}"
     label_orange = f"Riskli Stok (6-12 Ay)\n\n{orange_risk}"
     label_gray = f"Stock Out\n\n{stock_out_count}"
 
-    # RENKLİ BUTONLAR
+    # RENKLİ BUTONLAR (CSS ile boyanacaklar)
     if b1.button(label_red, use_container_width=True, on_click=set_critical, key="btn_crit"): pass
     if b2.button(label_orange, use_container_width=True, on_click=set_risky, key="btn_risk"): pass
     if b3.button(label_gray, use_container_width=True, on_click=set_stockout, key="btn_out"): pass
