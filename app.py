@@ -11,12 +11,12 @@ st.set_page_config(page_title="Stock Control Intelligence", layout="wide", page_
 
 DATA_FILE_PATH = "master_stryker_data.xlsx"
 
-# --- CSS (RENKLİ KUTUCUKLAR GERİ GELDİ!) ---
+# --- CSS (RENKLİ KUTUCUKLARI ZORLA GETİREN KOD) ---
 st.markdown("""
     <style>
         .stApp {background-color: #F4F6F9;}
 
-        /* Genel KPI Kartları (Sarı Kenarlı) */
+        /* KPI Kartları */
         div[data-testid="stMetric"] {
             background-color: #ffffff !important; 
             border: 1px solid #e0e0e0; 
@@ -24,85 +24,80 @@ st.markdown("""
             padding: 10px; 
             border-radius: 6px;
         }
-        /* Tablo Stilleri */
-        thead th {
-            background-color: #f0f2f6 !important; color: #31333F !important; 
-            font-size: 14px !important; font-weight: 600 !important; 
-            border-bottom: 2px solid #e0e0e0 !important;
-        }
-        tbody tr:nth-of-type(even) {background-color: #f9f9f9;}
 
-        /* Sekme Stilleri */
-        .stTabs [data-baseweb="tab-list"] {gap: 8px;}
-        .stTabs [data-baseweb="tab"] {
-            height: 40px; background-color: white; border-radius: 4px; 
-            font-weight: 600; border: 1px solid #ddd;
-        }
-        .stTabs [aria-selected="true"] {
-            background-color: #fff !important; color: #000 !important; 
-            border-bottom: 3px solid #FFC107 !important;
-        }
+        /* Tablo ve Sekmeler */
+        thead th {background-color: #f0f2f6 !important; color: #31333F !important; font-size: 14px !important;}
+        .stTabs [aria-selected="true"] {border-bottom: 3px solid #FFC107 !important;}
 
-        /* Sidebar Butonları */
-        .stDownloadButton button {width: 100%; border: 1px solid #28a745; color: #28a745;}
-        div[data-testid="stForm"] button {width: 100%; background-color: #FFC107; color: black; font-weight: bold; border: none;}
-        button[kind="secondary"] {width: 100%;}
+        /* İndirme Butonu (Yeşil) */
+        .stDownloadButton button {border: 1px solid #28a745 !important; color: #28a745 !important;}
 
-        /* --- ALERT CENTER RENKLİ BUTONLAR (İŞTE BURASI DÜZELDİ) --- */
+        /* Form Butonu (Sarı) */
+        div[data-testid="stForm"] button {background-color: #FFC107 !important; color: black !important; border: none !important;}
 
-        /* 1. Kırmızı Kutu (Kritik) */
-        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(1) div[data-testid="stButton"] button {
-            background-color: #d32f2f !important; 
-            color: white !important; 
+        /* --- ALERT CENTER RENKLİ BUTONLAR (ZORUNLU STİL) --- */
+
+        /* 1. Buton: KIRMIZI (Kritik) */
+        /* Bu seçici, ana ekrandaki 3'lü kolonun ilkindeki butonu hedefler */
+        div[data-testid="column"]:nth-of-type(1) div[data-testid="stButton"] button {
+            background-color: #d32f2f !important;
+            color: white !important;
             border: none !important;
-            border-radius: 8px !important; 
-            padding: 15px 0px !important; 
-            font-weight: 700 !important; 
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important; 
-            height: auto !important;
-            transition: all 0.2s ease-in-out;
+            border-radius: 8px !important;
+            padding: 15px 0px !important;
+            height: 100px !important;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important;
         }
-        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(1) div[data-testid="stButton"] button:hover {
-            background-color: #b71c1c !important; transform: scale(1.02);
+        div[data-testid="column"]:nth-of-type(1) div[data-testid="stButton"] button p {
+            color: white !important;
+            font-size: 20px !important;
+            font-weight: bold !important;
+        }
+        div[data-testid="column"]:nth-of-type(1) div[data-testid="stButton"] button:hover {
+            background-color: #b71c1c !important;
+            transform: scale(1.02);
         }
 
-        /* 2. Turuncu Kutu (Riskli) */
-        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(2) div[data-testid="stButton"] button {
-            background-color: #f57c00 !important; 
-            color: white !important; 
+        /* 2. Buton: TURUNCU (Riskli) */
+        div[data-testid="column"]:nth-of-type(2) div[data-testid="stButton"] button {
+            background-color: #f57c00 !important;
+            color: white !important;
             border: none !important;
-            border-radius: 8px !important; 
-            padding: 15px 0px !important; 
-            font-weight: 700 !important; 
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important; 
-            height: auto !important;
-            transition: all 0.2s ease-in-out;
+            border-radius: 8px !important;
+            padding: 15px 0px !important;
+            height: 100px !important;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important;
         }
-        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(2) div[data-testid="stButton"] button:hover {
-            background-color: #e65100 !important; transform: scale(1.02);
+        div[data-testid="column"]:nth-of-type(2) div[data-testid="stButton"] button p {
+            color: white !important;
+            font-size: 20px !important;
+            font-weight: bold !important;
+        }
+        div[data-testid="column"]:nth-of-type(2) div[data-testid="stButton"] button:hover {
+            background-color: #e65100 !important;
+            transform: scale(1.02);
         }
 
-        /* 3. Gri Kutu (Stock Out) */
-        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(3) div[data-testid="stButton"] button {
-            background-color: #616161 !important; 
-            color: white !important; 
+        /* 3. Buton: GRİ (Stock Out) */
+        div[data-testid="column"]:nth-of-type(3) div[data-testid="stButton"] button {
+            background-color: #616161 !important;
+            color: white !important;
             border: none !important;
-            border-radius: 8px !important; 
-            padding: 15px 0px !important; 
-            font-weight: 700 !important; 
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important; 
-            height: auto !important;
-            transition: all 0.2s ease-in-out;
+            border-radius: 8px !important;
+            padding: 15px 0px !important;
+            height: 100px !important;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important;
         }
-        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(3) div[data-testid="stButton"] button:hover {
-            background-color: #424242 !important; transform: scale(1.02);
+        div[data-testid="column"]:nth-of-type(3) div[data-testid="stButton"] button p {
+            color: white !important;
+            font-size: 20px !important;
+            font-weight: bold !important;
+        }
+        div[data-testid="column"]:nth-of-type(3) div[data-testid="stButton"] button:hover {
+            background-color: #424242 !important;
+            transform: scale(1.02);
         }
 
-        /* Buton içi yazı boyutlarını ayarla */
-        div[data-testid="stButton"] button p {
-            font-size: 20px !important; 
-            line-height: 1.4 !important;
-        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -111,7 +106,7 @@ if 'alert_filter_state' not in st.session_state:
     st.session_state.alert_filter_state = 'all'
 
 
-# --- TURBO VERİ YÜKLEYİCİ (HIZLI MOD) ---
+# --- TURBO VERİ YÜKLEYİCİ ---
 @st.cache_data(show_spinner=False)
 def load_and_process_data(file_path, mtime):
     try:
@@ -244,7 +239,7 @@ with st.sidebar:
                 st.rerun()
     st.markdown("---")
 
-# --- DATA LOAD (TURBO) ---
+# --- DATA LOAD ---
 processed_data = {}
 if os.path.exists(DATA_FILE_PATH):
     mtime = os.path.getmtime(DATA_FILE_PATH)
@@ -297,7 +292,7 @@ with st.sidebar.form("filter_form"):
     submitted = st.form_submit_button("🚀 FİLTRELERİ UYGULA")
 
 
-# --- FİLTRE MOTORU (HIZLI) ---
+# --- FİLTRE MOTORU ---
 def fast_filter(df):
     if df.empty: return df
     mask = pd.Series(True, index=df.index)
@@ -417,7 +412,7 @@ with tab_alert:
     stock_out_count = len(f_out)
 
 
-    # Buton Fonksiyonları
+    # State Değiştirme
     def set_critical():
         st.session_state.alert_filter_state = 'critical' if st.session_state.alert_filter_state != 'critical' else 'all'
 
@@ -432,19 +427,17 @@ with tab_alert:
 
     b1, b2, b3 = st.columns(3)
 
-    # HTML Etiketleri (Renkler CSS'ten geliyor, burası sadece metin)
     label_red = f"Kritik Stok (<6 Ay)\n\n{len(red_risk)}"
     label_orange = f"Riskli Stok (6-12 Ay)\n\n{orange_risk}"
     label_gray = f"Stock Out\n\n{stock_out_count}"
 
-    # RENKLİ BUTONLAR (CSS ile boyanacaklar)
+    # RENKLİ BUTONLAR (CSS ile zorlanmış stil)
     if b1.button(label_red, use_container_width=True, on_click=set_critical, key="btn_crit"): pass
     if b2.button(label_orange, use_container_width=True, on_click=set_risky, key="btn_risk"): pass
     if b3.button(label_gray, use_container_width=True, on_click=set_stockout, key="btn_out"): pass
 
     st.markdown("---")
 
-    # --- TABLO MANTIĞI ---
     current_filter = st.session_state.alert_filter_state
 
     display_df = pd.DataFrame()
