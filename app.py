@@ -11,16 +11,16 @@ st.set_page_config(page_title="Stock Control Intelligence", layout="wide", page_
 
 DATA_FILE_PATH = "master_stryker_data.xlsx"
 
-# --- CSS (GARANTİLİ RENK VE STİL KODLARI) ---
+# --- CSS (RENKLERİ ZORLA UYGULAYAN "NÜKLEER" KOD) ---
 st.markdown("""
     <style>
         .stApp {background-color: #F4F6F9;}
 
-        /* 1. KPI KARTLARI (ÜSTTEKİ 4 KUTU) - ESKİ HALİ */
+        /* 1. KPI KARTLARI (ÜSTTEKİ 4 KUTU) - BEYAZ KUTU + SARI ÇİZGİ */
         div[data-testid="stMetric"] {
             background-color: #ffffff !important; 
             border: 1px solid #e0e0e0 !important; 
-            border-left: 8px solid #FFC107 !important; /* Kalın Sarı Çizgi */
+            border-left: 8px solid #FFC107 !important;
             padding: 15px !important; 
             border-radius: 8px !important;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
@@ -28,70 +28,81 @@ st.markdown("""
         div[data-testid="stMetric"] label { color: #444 !important; font-size: 14px !important; }
         div[data-testid="stMetric"] div[data-testid="stMetricValue"] { color: #000 !important; font-size: 28px !important; }
 
-        /* 2. ALERT CENTER BUTONLARI (KIRMIZI - TURUNCU - GRİ) */
-        /* Streamlit'in 'stButton' class'ını doğrudan hedefliyoruz */
+        /* 2. ALERT CENTER RENKLİ BUTONLARI (KESİN ÇÖZÜM) */
+        /* Streamlit'in tüm varsayılan buton stillerini eziyoruz */
 
-        /* KIRMIZI BUTON (1. Sütundaki Buton) */
-        div[data-testid="column"]:nth-of-type(1) .stButton > button {
+        /* KIRMIZI BUTON (1. Sütun) */
+        div[data-testid="column"]:nth-of-type(1) button[kind="secondary"] {
             background-color: #d32f2f !important;
             color: white !important;
             border: none !important;
-            border-left: 12px solid #b71c1c !important; /* Sol şerit */
-            border-radius: 8px !important;
-            height: 100px !important;
-            padding-top: 10px !important;
-            padding-bottom: 10px !important;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.15) !important;
-            transition: all 0.3s ease !important;
+            border-left: 15px solid #b71c1c !important;
+            border-radius: 10px !important;
+            height: 120px !important;
+            box-shadow: 0 5px 15px rgba(211, 47, 47, 0.4) !important;
+            transition: all 0.2s ease-in-out !important;
         }
-        div[data-testid="column"]:nth-of-type(1) .stButton > button:hover {
-            background-color: #c62828 !important;
+        /* Hover ve Active Durumlarını da Eziyoruz */
+        div[data-testid="column"]:nth-of-type(1) button[kind="secondary"]:hover,
+        div[data-testid="column"]:nth-of-type(1) button[kind="secondary"]:active,
+        div[data-testid="column"]:nth-of-type(1) button[kind="secondary"]:focus {
+            background-color: #b71c1c !important;
+            color: white !important;
+            border-color: #b71c1c !important;
+            box-shadow: inset 0 0 0 9999px rgba(0, 0, 0, 0.1) !important;
             transform: scale(1.02) !important;
         }
-        div[data-testid="column"]:nth-of-type(1) .stButton > button p {
-            font-size: 22px !important;
-            font-weight: 800 !important;
-            color: white !important;
+        /* Buton içindeki yazı rengi */
+        div[data-testid="column"]:nth-of-type(1) button[kind="secondary"] p {
+            color: white !important; font-weight: 900 !important; font-size: 26px !important;
         }
 
-        /* TURUNCU BUTON (2. Sütundaki Buton) */
-        div[data-testid="column"]:nth-of-type(2) .stButton > button {
+        /* TURUNCU BUTON (2. Sütun) */
+        div[data-testid="column"]:nth-of-type(2) button[kind="secondary"] {
             background-color: #f57c00 !important;
             color: white !important;
             border: none !important;
-            border-left: 12px solid #e65100 !important;
-            border-radius: 8px !important;
-            height: 100px !important;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.15) !important;
+            border-left: 15px solid #e65100 !important;
+            border-radius: 10px !important;
+            height: 120px !important;
+            box-shadow: 0 5px 15px rgba(245, 124, 0, 0.4) !important;
+             transition: all 0.2s ease-in-out !important;
         }
-        div[data-testid="column"]:nth-of-type(2) .stButton > button:hover {
-            background-color: #ef6c00 !important;
+         div[data-testid="column"]:nth-of-type(2) button[kind="secondary"]:hover,
+         div[data-testid="column"]:nth-of-type(2) button[kind="secondary"]:active,
+         div[data-testid="column"]:nth-of-type(2) button[kind="secondary"]:focus {
+            background-color: #e65100 !important;
+            color: white !important;
+            border-color: #e65100 !important;
+             box-shadow: inset 0 0 0 9999px rgba(0, 0, 0, 0.1) !important;
             transform: scale(1.02) !important;
         }
-        div[data-testid="column"]:nth-of-type(2) .stButton > button p {
-            font-size: 22px !important;
-            font-weight: 800 !important;
-            color: white !important;
+        div[data-testid="column"]:nth-of-type(2) button[kind="secondary"] p {
+            color: white !important; font-weight: 900 !important; font-size: 26px !important;
         }
 
-        /* GRİ BUTON (3. Sütundaki Buton) */
-        div[data-testid="column"]:nth-of-type(3) .stButton > button {
+        /* GRİ BUTON (3. Sütun) */
+        div[data-testid="column"]:nth-of-type(3) button[kind="secondary"] {
             background-color: #616161 !important;
             color: white !important;
             border: none !important;
-            border-left: 12px solid #212121 !important;
-            border-radius: 8px !important;
-            height: 100px !important;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.15) !important;
+            border-left: 15px solid #212121 !important;
+            border-radius: 10px !important;
+            height: 120px !important;
+            box-shadow: 0 5px 15px rgba(97, 97, 97, 0.4) !important;
+             transition: all 0.2s ease-in-out !important;
         }
-        div[data-testid="column"]:nth-of-type(3) .stButton > button:hover {
+        div[data-testid="column"]:nth-of-type(3) button[kind="secondary"]:hover,
+        div[data-testid="column"]:nth-of-type(3) button[kind="secondary"]:active,
+        div[data-testid="column"]:nth-of-type(3) button[kind="secondary"]:focus{
             background-color: #424242 !important;
+            color: white !important;
+            border-color: #212121 !important;
+            box-shadow: inset 0 0 0 9999px rgba(0, 0, 0, 0.1) !important;
             transform: scale(1.02) !important;
         }
-        div[data-testid="column"]:nth-of-type(3) .stButton > button p {
-            font-size: 22px !important;
-            font-weight: 800 !important;
-            color: white !important;
+        div[data-testid="column"]:nth-of-type(3) button[kind="secondary"] p {
+            color: white !important; font-weight: 900 !important; font-size: 26px !important;
         }
 
         /* 3. DİĞER DÜZELTMELER */
@@ -107,9 +118,10 @@ st.markdown("""
             border: 1px solid #28a745 !important; 
             color: #28a745 !important;
             background-color: white !important;
-            padding: 0.25rem 0.75rem !important;
+            padding: 0.3rem 0.8rem !important;
             font-size: 14px !important;
             height: auto !important;
+            min-height: 0px !important;
         }
         .stDownloadButton > button:hover {
             background-color: #28a745 !important;
@@ -156,7 +168,6 @@ def load_and_process_data(file_path, mtime):
         # 1. GENERAL
         df_gen = sheets.get("General", pd.DataFrame())
         df_gen = clean_df(df_gen)
-        # Veriye dokunmuyoruz, tabloda % formatı ile göstereceğiz.
 
         item_franchise_map = {}
         if not df_gen.empty and 'Franchise Description' in df_gen.columns and 'Item No' in df_gen.columns:
@@ -202,11 +213,9 @@ def load_and_process_data(file_path, mtime):
             if 'Franchise Description' not in df_stok.columns and 'Item No' in df_stok.columns:
                 df_stok['Franchise Description'] = df_stok['Item No'].map(item_franchise_map)
 
-            # ADET KÜSURAT SİLME
             if 'Qty On Hand' in df_stok.columns:
                 df_stok['Qty On Hand'] = pd.to_numeric(df_stok['Qty On Hand'], errors='coerce').fillna(0)
 
-            # SITE KÜSURAT SİLME
             if 'Site' in df_stok.columns:
                 df_stok['Site'] = pd.to_numeric(df_stok['Site'], errors='coerce').fillna(0).astype(int).astype(
                     str).replace('0', '')
@@ -291,7 +300,7 @@ with st.sidebar:
                 st.rerun()
     st.markdown("---")
 
-# --- VERİ YÜKLEME ---
+# --- VERİ YÜKLEME KONTROLÜ ---
 processed_data = {}
 if os.path.exists(DATA_FILE_PATH):
     mtime = os.path.getmtime(DATA_FILE_PATH)
@@ -397,7 +406,7 @@ with tab1:
     else:
         st.info("Veri yok.")
 
-# 2. STOK (RISK SÜTUNU YOK)
+# 2. STOK (RISK DURUMU SÜTUNU GİZLİ)
 with tab2:
     if not f_stok.empty:
         c1, c2 = st.columns([1, 1])
@@ -411,6 +420,7 @@ with tab2:
                 st.altair_chart(chart, use_container_width=True)
         with c2:
             st.markdown("##### 📝 Detaylı Stok Listesi")
+            # Risk Durumu sütununu gizle
             cols_hide = ['Risk Durumu', 'Expire', 'Expire_Obj', 'Days_To_Expire', 'Franchise Description']
             cols_show = [c for c in f_stok.columns if c not in cols_hide]
             # Adet Tam Sayı Formatı
@@ -473,6 +483,7 @@ with tab_alert:
     label_orange = f"Riskli Stok (6-12 Ay)\n\n{orange_risk}"
     label_gray = f"Stock Out\n\n{stock_out_count}"
 
+    # BUTONLAR (CSS İLE RENKLENDİRİLDİ)
     with b1:
         st.button(label_red, use_container_width=True, on_click=set_critical, key="btn_red")
     with b2:
@@ -484,7 +495,7 @@ with tab_alert:
 
     current_filter = st.session_state.alert_filter_state
     display_df = pd.DataFrame()
-    title_text = "Risk Analiz Tablosu"  # Başlık sadeleşti
+    title_text = "Risk Analiz Tablosu"
 
     if current_filter == 'critical':
         display_df = red_risk
