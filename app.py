@@ -11,7 +11,7 @@ st.set_page_config(page_title="Stock Control Intelligence", layout="wide", page_
 
 DATA_FILE_PATH = "master_stryker_data.xlsx"
 
-# --- CSS (GÖRSEL DÜZENLEMELER) ---
+# --- CSS (ÖZEL RENKLENDİRME) ---
 st.markdown("""
     <style>
         .stApp {background-color: #F4F6F9;}
@@ -50,58 +50,81 @@ st.markdown("""
             border-bottom: 3px solid #FFC107 !important;
         }
 
-        /* BUTONLAR */
+        /* SIDEBAR BUTONLARI */
         .stDownloadButton button {width: 100%; border: 1px solid #28a745; color: #28a745;}
         div[data-testid="stForm"] button {width: 100%; background-color: #FFC107; color: black; font-weight: bold; border: none;}
         button[kind="secondary"] {width: 100%;}
 
-        /* --- ALERT CENTER BUTONLARI İÇİN ÖZEL CSS --- */
-        /* Bu CSS, Alert Center'daki butonları renkli kartlara dönüştürür */
+        /* --- ALERT CENTER RENKLİ BUTONLAR (ANA EKRAN) --- */
 
-        /* 1. Buton (Kırmızı - Kritik) */
-        div[data-testid="column"]:nth-of-type(1) button.css-custom-red {
+        /* 1. Buton: KIRMIZI (Kritik) */
+        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(1) div[data-testid="stButton"] button {
             background-color: #d32f2f !important;
             color: white !important;
-            border: none;
-            border-left: 8px solid #b71c1c !important;
-            padding: 20px 10px !important;
-            font-size: 18px !important;
-            height: 100px;
+            border: none !important;
+            border-radius: 8px !important;
+            padding: 20px 0px !important;
+            font-size: 20px !important;
+            font-weight: 700 !important;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important;
+            height: 100px !important;
+            transition: all 0.2s ease-in-out;
         }
-        /* 2. Buton (Turuncu - Riskli) */
-        div[data-testid="column"]:nth-of-type(2) button.css-custom-orange {
+        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(1) div[data-testid="stButton"] button:hover {
+            background-color: #b71c1c !important;
+            transform: scale(1.02);
+        }
+
+        /* 2. Buton: TURUNCU (Riskli) */
+        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(2) div[data-testid="stButton"] button {
             background-color: #f57c00 !important;
             color: white !important;
-            border: none;
-            border-left: 8px solid #e65100 !important;
-            padding: 20px 10px !important;
-            font-size: 18px !important;
-            height: 100px;
+            border: none !important;
+            border-radius: 8px !important;
+            padding: 20px 0px !important;
+            font-size: 20px !important;
+            font-weight: 700 !important;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important;
+            height: 100px !important;
+            transition: all 0.2s ease-in-out;
         }
-        /* 3. Buton (Gri - Stock Out) */
-        div[data-testid="column"]:nth-of-type(3) button.css-custom-gray {
+        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(2) div[data-testid="stButton"] button:hover {
+            background-color: #e65100 !important;
+            transform: scale(1.02);
+        }
+
+        /* 3. Buton: GRİ (Stock Out) */
+        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(3) div[data-testid="stButton"] button {
             background-color: #616161 !important;
             color: white !important;
-            border: none;
-            border-left: 8px solid #212121 !important;
-            padding: 20px 10px !important;
-            font-size: 18px !important;
-            height: 100px;
+            border: none !important;
+            border-radius: 8px !important;
+            padding: 20px 0px !important;
+            font-size: 20px !important;
+            font-weight: 700 !important;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important;
+            height: 100px !important;
+            transition: all 0.2s ease-in-out;
         }
-        /* Buton Hover Efektleri */
-        button.css-custom-red:hover {background-color: #c62828 !important; border-color: white !important;}
-        button.css-custom-orange:hover {background-color: #ef6c00 !important; border-color: white !important;}
-        button.css-custom-gray:hover {background-color: #424242 !important; border-color: white !important;}
+        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(3) div[data-testid="stButton"] button:hover {
+            background-color: #424242 !important;
+            transform: scale(1.02);
+        }
+
+        /* Satır içi metin düzeni */
+        div[data-testid="stButton"] button p {
+            font-size: 24px !important;
+        }
 
     </style>
 """, unsafe_allow_html=True)
 
-# --- SESSION STATE (Filtre Durumu İçin) ---
+# --- SESSION STATE ---
 if 'alert_filter_state' not in st.session_state:
-    st.session_state.alert_filter_state = 'all'  # Seçenekler: 'all', 'critical', 'risky', 'stockout'
+    st.session_state.alert_filter_state = 'all'
 
 
-# --- CACHE VE HATA YAKALAMA ---
+# --- CACHE ---
 @st.cache_data(show_spinner=False)
 def load_excel_data(file_path, mtime):
     try:
@@ -145,7 +168,7 @@ def reset_filters():
     st.session_state.franchise_key = []
     st.session_state.dynamic_val_key = []
     st.session_state.search_key = ""
-    st.session_state.alert_filter_state = 'all'  # Alert filtresini de sıfırla
+    st.session_state.alert_filter_state = 'all'
 
 
 # --- YAN MENÜ ---
@@ -384,7 +407,7 @@ with tab_alert:
     stock_out_count = len(f_out)
 
 
-    # --- BUTONLARI HAZIRLA (State Değiştirici Fonksiyonlar) ---
+    # Buton Fonksiyonları
     def set_critical():
         st.session_state.alert_filter_state = 'critical' if st.session_state.alert_filter_state != 'critical' else 'all'
 
@@ -397,41 +420,21 @@ with tab_alert:
         st.session_state.alert_filter_state = 'stockout' if st.session_state.alert_filter_state != 'stockout' else 'all'
 
 
-    # BUTON SÜTUNLARI
     b1, b2, b3 = st.columns(3)
 
-    # CSS'deki sınıfları tetiklemek için butonların sırası önemli
-    # Buton etiketlerini (Label) oluştur
-    label_red = f"🔴 Kritik Stok (<6 Ay)\n\n{len(red_risk)}"
-    label_orange = f"🟠 Riskli Stok (6-12 Ay)\n\n{orange_risk}"
-    label_gray = f"📉 Stock Out\n\n{stock_out_count}"
+    label_red = f"Kritik Stok (<6 Ay)\n\n{len(red_risk)}"
+    label_orange = f"Riskli Stok (6-12 Ay)\n\n{orange_risk}"
+    label_gray = f"Stock Out\n\n{stock_out_count}"
 
-    # Butonları çiz (Her biri kendi state fonksiyonunu çağırır)
-    # type="primary" veya "secondary" yerine kendi CSS'imizi kullanacağız.
-    # Bu yüzden sadece oluşturuyoruz. CSS 'div button' seçicisiyle bunları boyayacak.
-    # CSS'de :nth-of-type(1) -> Kırmızı, (2) -> Turuncu, (3) -> Gri ayarlandı.
-
-    # Butonlara özel CSS class vermek için key veya args kullanamıyoruz, Streamlit DOM yapısına göre CSS yazdım.
-    # Ancak butonların içinde bulunduğu kolonlara özel stil atamak gerekebilir.
-    # Yukarıdaki CSS, bu kolonların içindeki İLK butonları hedefliyor.
-
-    # Kırmızı Buton
+    # RENKLİ BUTONLAR
     if b1.button(label_red, use_container_width=True, on_click=set_critical, key="btn_crit"): pass
-    # Turuncu Buton
     if b2.button(label_orange, use_container_width=True, on_click=set_risky, key="btn_risk"): pass
-    # Gri Buton
     if b3.button(label_gray, use_container_width=True, on_click=set_stockout, key="btn_out"): pass
-
-    # Butonlara stil uygulamak için JavaScript trick veya sadece global CSS yeterli
-    # Yukarıdaki CSS: div[data-testid="column"]:nth-of-type(1) button
-    # Bu seçici çalışacaktır.
 
     st.markdown("---")
 
-    # --- TABLO GÖSTERİM MANTIĞI ---
+    # --- TABLO MANTIĞI ---
     current_filter = st.session_state.alert_filter_state
-
-    col_head, col_dl = st.columns([6, 1])
 
     display_df = pd.DataFrame()
     title_text = "Risk Analiz Tablosu (Tümü)"
@@ -439,35 +442,31 @@ with tab_alert:
     if current_filter == 'critical':
         display_df = red_risk
         title_text = "🔴 Kritik Stok Listesi (<6 Ay)"
-        st.info("Filtre Aktif: Sadece **Kritik Stoklar** gösteriliyor. (Tümünü görmek için butona tekrar basın)")
+        st.info("Filtre Aktif: **Kritik Stoklar**")
     elif current_filter == 'risky':
         display_df = f_stok[f_stok['Risk Durumu'] == "🟠 Riskli (6-12 Ay)"]
         title_text = "🟠 Riskli Stok Listesi (6-12 Ay)"
-        st.info("Filtre Aktif: Sadece **Riskli Stoklar** gösteriliyor. (Tümünü görmek için butona tekrar basın)")
+        st.info("Filtre Aktif: **Riskli Stoklar**")
     elif current_filter == 'stockout':
         display_df = f_out
         title_text = "📉 Stock Out Listesi"
-        st.info("Filtre Aktif: Sadece **Stock Out** ürünleri gösteriliyor. (Tümünü görmek için butona tekrar basın)")
+        st.info("Filtre Aktif: **Stock Out**")
     else:
-        # Varsayılan: Stok tablosunu SKT'ye göre sırala
         display_df = f_stok.sort_values("Days_To_Expire") if not f_stok.empty else pd.DataFrame()
         title_text = "🕵️‍♂️ Risk Analiz Tablosu (Tümü)"
 
+    col_head, col_dl = st.columns([6, 1])
     with col_head:
         st.markdown(f"##### {title_text}")
-
     with col_dl:
         if not display_df.empty:
             st.download_button("📥 Raporu İndir", data=convert_df_single(display_df),
                                file_name=f"{current_filter}_Rapor.xlsx")
 
-    # Tabloyu Çiz
     if not display_df.empty:
-        # Eğer Stock Out listesiyse renk kuralı uygulama (Çünkü Risk Durumu sütunu yok)
         if current_filter == 'stockout':
             st.dataframe(display_df, use_container_width=True, hide_index=True)
         else:
-            # Risk Durumu olanlar için renklendirme
             def style_rows(row):
                 if 'Risk Durumu' in row:
                     val = str(row['Risk Durumu'])
@@ -480,13 +479,10 @@ with tab_alert:
                 return [''] * len(row)
 
 
-            # Gösterilecek sütunları ayarla
             all_cols = display_df.columns.tolist()
-            # Öncelikli sütunlar
             priority = ["Item No", "Location", "Qty On Hand", "Expire Date", "Risk Durumu", "Franchise Description"]
             final_cols = [c for c in priority if c in all_cols] + [c for c in all_cols if c not in priority]
 
-            # Formatlama (Qty on Hand basamaksız)
             st.dataframe(
                 display_df[final_cols].style.apply(style_rows, axis=1).format({"Qty On Hand": "{:.0f}"}),
                 use_container_width=True,
