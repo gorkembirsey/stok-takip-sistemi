@@ -4,66 +4,111 @@ import altair as alt
 from io import BytesIO
 import datetime
 import os
-import zipfile  # Hata yakalamak için eklendi
+import zipfile
 
 # --- SAYFA YAPILANDIRMASI ---
 st.set_page_config(page_title="Stock Control Intelligence", layout="wide", page_icon="🧠")
 
 DATA_FILE_PATH = "master_stryker_data.xlsx"
 
-# --- CSS (AYNI) ---
+# --- CSS (GÖRSEL DÜZENLEMELER) ---
 st.markdown("""
     <style>
         .stApp {background-color: #F4F6F9;}
 
-        .alert-card {
-            padding: 15px; border-radius: 8px; color: white; font-weight: bold; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 15px; 
-            text-align: center; display: flex; flex-direction: column; justify-content: center;
-        }
-        .bg-red {background-color: #d32f2f; border-left: 6px solid #b71c1c;}
-        .bg-orange {background-color: #f57c00; border-left: 6px solid #e65100;}
-        .bg-gray {background-color: #616161; border-left: 6px solid #212121;}
-
-        .alert-text {font-size: 16px; opacity: 0.95; margin-bottom: 5px;}
-        .alert-number {font-size: 32px; font-weight: 800; line-height: 1.2;}
-
+        /* KPI KARTLARI (Ana Sayfa) */
         div[data-testid="stMetric"] {
-            background-color: #ffffff !important; border: 1px solid #e0e0e0; 
-            border-left: 6px solid #FFC107 !important; padding: 10px; border-radius: 6px;
+            background-color: #ffffff !important; 
+            border: 1px solid #e0e0e0; 
+            border-left: 6px solid #FFC107 !important; 
+            padding: 10px; 
+            border-radius: 6px;
         }
+
+        /* TABLO BAŞLIKLARI */
         thead th {
-            background-color: #f0f2f6 !important; color: #31333F !important; 
-            font-size: 14px !important; font-weight: 600 !important; 
+            background-color: #f0f2f6 !important; 
+            color: #31333F !important; 
+            font-size: 14px !important; 
+            font-weight: 600 !important; 
             border-bottom: 2px solid #e0e0e0 !important;
         }
         tbody tr:nth-of-type(even) {background-color: #f9f9f9;}
 
+        /* SEKMELER */
         .stTabs [data-baseweb="tab-list"] {gap: 8px;}
         .stTabs [data-baseweb="tab"] {
-            height: 40px; background-color: white; border-radius: 4px; 
-            font-weight: 600; border: 1px solid #ddd;
+            height: 40px; 
+            background-color: white; 
+            border-radius: 4px; 
+            font-weight: 600; 
+            border: 1px solid #ddd;
         }
         .stTabs [aria-selected="true"] {
-            background-color: #fff !important; color: #000 !important; 
+            background-color: #fff !important; 
+            color: #000 !important; 
             border-bottom: 3px solid #FFC107 !important;
         }
 
+        /* BUTONLAR */
         .stDownloadButton button {width: 100%; border: 1px solid #28a745; color: #28a745;}
         div[data-testid="stForm"] button {width: 100%; background-color: #FFC107; color: black; font-weight: bold; border: none;}
         button[kind="secondary"] {width: 100%;}
+
+        /* --- ALERT CENTER BUTONLARI İÇİN ÖZEL CSS --- */
+        /* Bu CSS, Alert Center'daki butonları renkli kartlara dönüştürür */
+
+        /* 1. Buton (Kırmızı - Kritik) */
+        div[data-testid="column"]:nth-of-type(1) button.css-custom-red {
+            background-color: #d32f2f !important;
+            color: white !important;
+            border: none;
+            border-left: 8px solid #b71c1c !important;
+            padding: 20px 10px !important;
+            font-size: 18px !important;
+            height: 100px;
+        }
+        /* 2. Buton (Turuncu - Riskli) */
+        div[data-testid="column"]:nth-of-type(2) button.css-custom-orange {
+            background-color: #f57c00 !important;
+            color: white !important;
+            border: none;
+            border-left: 8px solid #e65100 !important;
+            padding: 20px 10px !important;
+            font-size: 18px !important;
+            height: 100px;
+        }
+        /* 3. Buton (Gri - Stock Out) */
+        div[data-testid="column"]:nth-of-type(3) button.css-custom-gray {
+            background-color: #616161 !important;
+            color: white !important;
+            border: none;
+            border-left: 8px solid #212121 !important;
+            padding: 20px 10px !important;
+            font-size: 18px !important;
+            height: 100px;
+        }
+        /* Buton Hover Efektleri */
+        button.css-custom-red:hover {background-color: #c62828 !important; border-color: white !important;}
+        button.css-custom-orange:hover {background-color: #ef6c00 !important; border-color: white !important;}
+        button.css-custom-gray:hover {background-color: #424242 !important; border-color: white !important;}
+
     </style>
 """, unsafe_allow_html=True)
 
+# --- SESSION STATE (Filtre Durumu İçin) ---
+if 'alert_filter_state' not in st.session_state:
+    st.session_state.alert_filter_state = 'all'  # Seçenekler: 'all', 'critical', 'risky', 'stockout'
 
-# --- CACHE VE HATA YAKALAMA (DÜZELTİLEN KISIM) ---
+
+# --- CACHE VE HATA YAKALAMA ---
 @st.cache_data(show_spinner=False)
 def load_excel_data(file_path, mtime):
     try:
         xls = pd.read_excel(file_path, sheet_name=None)
         return {k.strip(): v for k, v in xls.items()}
     except zipfile.BadZipFile:
-        return None  # Dosya bozuksa None döndür
+        return None
     except Exception as e:
         return None
 
@@ -82,7 +127,6 @@ def convert_full_report(dfs_dict):
     output = BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         for sheet_name, df in dfs_dict.items():
-            # Boş dataframe'leri yazma ve isim uzunluğunu kontrol et
             if not df.empty:
                 safe_name = sheet_name[:30]
                 df.to_excel(writer, sheet_name=safe_name, index=False)
@@ -101,9 +145,10 @@ def reset_filters():
     st.session_state.franchise_key = []
     st.session_state.dynamic_val_key = []
     st.session_state.search_key = ""
+    st.session_state.alert_filter_state = 'all'  # Alert filtresini de sıfırla
 
 
-# --- YAN MENÜ (ADMIN) ---
+# --- YAN MENÜ ---
 with st.sidebar:
     st.image(
         "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Stryker_Corporation_logo.svg/2560px-Stryker_Corporation_logo.svg.png",
@@ -117,56 +162,47 @@ with st.sidebar:
                 with open(DATA_FILE_PATH, "wb") as f:
                     f.write(uploaded_file.getbuffer())
                 load_excel_data.clear()
-                st.toast("Veri Başarıyla Güncellendi!")
+                st.toast("Veri Güncellendi!")
                 st.rerun()
     st.markdown("---")
 
-# --- DATA CHECK & RECOVERY (KURTARMA MODU) ---
+# --- DATA CHECK ---
 sheets = {}
 if os.path.exists(DATA_FILE_PATH):
     mtime = os.path.getmtime(DATA_FILE_PATH)
     mod_time = datetime.datetime.fromtimestamp(mtime).strftime('%d.%m.%Y %H:%M')
     st.sidebar.caption(f"📅 Veri Tarihi: {mod_time}")
 
-    # Veriyi yüklemeyi dene
     loaded_data = load_excel_data(DATA_FILE_PATH, mtime)
-
     if loaded_data is None:
-        # Eğer dosya bozuksa:
-        st.error("⚠️ Sunucudaki veri dosyası bozulmuş (BadZipFile). Otomatik olarak temizleniyor.")
-        st.warning("👉 Lütfen sol menüden 'Yönetici Girişi' yapıp Excel dosyasını TEKRAR yükleyiniz.")
+        st.error("⚠️ Dosya bozuk (BadZipFile). Yönetici panelinden tekrar yükleyiniz.")
         try:
-            os.remove(DATA_FILE_PATH)  # Bozuk dosyayı sil
-            load_excel_data.clear()  # Cache temizle
+            os.remove(DATA_FILE_PATH); load_excel_data.clear()
         except:
             pass
-        st.stop()  # Uygulamayı burada durdur
+        st.stop()
     else:
         sheets = loaded_data
-
 else:
-    st.info("👋 Sistemde veri yok. Lütfen yönetici girişi yapıp dosya yükleyin.")
+    st.info("Veri yok. Yönetici girişi yapınız.")
     st.stop()
 
 # --- VERİ İŞLEME ---
 target_col = 'SS Coverage (W/O Consignment)'
 today = datetime.datetime.now()
 
-# GENERAL
 df_gen = sheets.get("General", pd.DataFrame())
 if not df_gen.empty:
     df_gen.columns = df_gen.columns.str.strip()
     if 'Item No' in df_gen.columns: df_gen['Item No'] = df_gen['Item No'].astype(str).str.strip()
     if target_col in df_gen.columns: df_gen[target_col] = pd.to_numeric(df_gen[target_col], errors='coerce') * 100
 
-# MAPPING
 item_franchise_map = {}
 if not df_gen.empty and 'Franchise Description' in df_gen.columns:
     temp_map = df_gen[['Item No', 'Franchise Description']].drop_duplicates(subset=['Item No'])
     item_franchise_map = dict(zip(temp_map['Item No'], temp_map['Franchise Description']))
 
 
-# PROCESS HELPER
 def process_df(sheet_name, id_col, rename_to='Item No'):
     df = sheets.get(sheet_name, pd.DataFrame())
     if not df.empty:
@@ -179,7 +215,6 @@ def process_df(sheet_name, id_col, rename_to='Item No'):
     return df
 
 
-# SEKMELERİ OKU
 df_out = process_df("Stock Out", 'Item No')
 if not df_out.empty and target_col in df_out.columns:
     df_out[target_col] = pd.to_numeric(df_out[target_col], errors='coerce') * 100
@@ -190,7 +225,6 @@ df_venlo = format_turkish_date(df_venlo, ['Line Creation Date', 'ETA', 'Request 
 df_yolda = process_df("Yoldaki İthalatlar", 'Ordered Item Number')
 df_yolda = format_turkish_date(df_yolda, ['Shipment Date', 'ETA'])
 
-# YENİ EKLENEN KISIM: KONSİNYE
 df_konsinye = process_df("Konsinye Stok Raporu", 'Item No')
 
 df_stok = process_df("Stok", 'Item Number')
@@ -218,13 +252,10 @@ with st.sidebar.form("filter_form"):
     st.markdown("---")
     filterable_columns = ['Item No', 'Location', 'Customer PO', 'Order Number', 'Item Description', 'Risk Durumu']
     selected_filter_col = st.selectbox("1. Kriter Seçin:", filterable_columns)
-
     unique_values = set()
-    # Konsinye dahil tüm tablolardan veri topla
     for d in [df_gen, df_stok, df_venlo, df_yolda, df_out, df_konsinye]:
         if not d.empty and selected_filter_col in d.columns:
             unique_values.update(d[selected_filter_col].dropna().astype(str).unique())
-
     selected_dynamic_values = st.multiselect(f"2. {selected_filter_col} Değerleri:",
                                              options=sorted(list(unique_values)), placeholder="Çoklu seçim yapın...",
                                              key="dynamic_val_key")
@@ -255,15 +286,13 @@ f_stok = fast_filter(df_stok)
 f_venlo = fast_filter(df_venlo)
 f_yolda = fast_filter(df_yolda)
 f_out = fast_filter(df_out)
-f_konsinye = fast_filter(df_konsinye)  # Yeni
+f_konsinye = fast_filter(df_konsinye)
 
 # --- İNDİRME ---
 st.sidebar.markdown("---")
 if not f_stok.empty or not f_gen.empty:
-    full_data = {
-        "General": f_gen, "Stok": f_stok, "Venlo": f_venlo,
-        "Yolda": f_yolda, "Stock Out": f_out, "Konsinye": f_konsinye
-    }
+    full_data = {"General": f_gen, "Stok": f_stok, "Venlo": f_venlo, "Yolda": f_yolda, "Stock Out": f_out,
+                 "Konsinye": f_konsinye}
     st.sidebar.download_button("📊 Tüm Raporu İndir", data=convert_full_report(full_data),
                                file_name=f"Rapor_{datetime.date.today()}.xlsx")
 
@@ -286,12 +315,7 @@ st.markdown("###")
 
 # SEKMELER
 tab1, tab2, tab3, tab4, tab5, tab6, tab_alert = st.tabs([
-    "📋 General",
-    "📍 Stok (Depo)",
-    "🌍 Venlo Orders",
-    "🚚 Yoldaki İthalatlar",
-    "🚨 Stock Out",
-    "💼 Konsinye Stok",
+    "📋 General", "📍 Stok (Depo)", "🌍 Venlo Orders", "🚚 Yoldaki İthalatlar", "🚨 Stock Out", "💼 Konsinye Stok",
     "🔔 Alert Center"
 ])
 
@@ -346,59 +370,127 @@ with tab5:
     else:
         st.success("Sorun yok.")
 
-with tab6:  # YENİ SEKME
+with tab6:
     if not f_konsinye.empty:
         st.dataframe(f_konsinye, use_container_width=True, hide_index=True)
     else:
-        st.info("Konsinye verisi bulunamadı.")
+        st.info("Konsinye verisi yok.")
 
 with tab_alert:
-    st.markdown("#### ⚠️ Operasyonel Risk Paneli")
+    st.markdown("#### ⚠️ Operasyonel Risk Paneli (Tıklanabilir)")
+
     red_risk = f_stok[f_stok['Risk Durumu'] == "🔴 Kritik (<6 Ay)"] if not f_stok.empty else pd.DataFrame()
-
-    a1, a2, a3 = st.columns(3)
-    with a1:
-        st.markdown(
-            f"""<div class="alert-card bg-red"><span class="alert-text">Kritik Stok (<6 Ay)</span><span class="alert-number">{len(red_risk)}</span></div>""",
-            unsafe_allow_html=True)
-    with a2:
-        cnt_org = f_stok[f_stok['Risk Durumu'] == "🟠 Riskli (6-12 Ay)"].shape[0] if not f_stok.empty else 0
-        st.markdown(
-            f"""<div class="alert-card bg-orange"><span class="alert-text">Riskli Stok (6-12 Ay)</span><span class="alert-number">{cnt_org}</span></div>""",
-            unsafe_allow_html=True)
-    with a3:
-        st.markdown(
-            f"""<div class="alert-card bg-gray"><span class="alert-text">Stock Out</span><span class="alert-number">{len(f_out)}</span></div>""",
-            unsafe_allow_html=True)
-
-    col_header, col_btn = st.columns([6, 1])
-    with col_header:
-        st.markdown("##### 🕵️‍♂️ Risk Analiz Tablosu")
-    with col_btn:
-        if not red_risk.empty:
-            st.download_button("📥 Raporu İndir", data=convert_df_single(red_risk), file_name="Kritik_Risk.xlsx")
-
-    if not f_stok.empty:
-        df_sorted = f_stok.sort_values("Days_To_Expire")
+    orange_risk = f_stok[f_stok['Risk Durumu'] == "🟠 Riskli (6-12 Ay)"].shape[0] if not f_stok.empty else 0
+    stock_out_count = len(f_out)
 
 
-        def style_rows(row):
-            if "🔴" in str(row['Risk Durumu']):
-                return ['background-color: #ffebee; color: #b71c1c'] * len(row)
-            elif "🟠" in str(row['Risk Durumu']):
-                return ['background-color: #fff3e0; color: #e65100'] * len(row)
-            elif "🟢" in str(row['Risk Durumu']):
-                return ['background-color: #e8f5e9; color: #1b5e20'] * len(row)
-            return [''] * len(row)
+    # --- BUTONLARI HAZIRLA (State Değiştirici Fonksiyonlar) ---
+    def set_critical():
+        st.session_state.alert_filter_state = 'critical' if st.session_state.alert_filter_state != 'critical' else 'all'
 
 
-        show_cols = ["Item No", "Location", "Qty On Hand", "Expire Date", "Risk Durumu", "Franchise Description"]
-        st.dataframe(
-            df_sorted[[c for c in show_cols if c in df_sorted.columns]]
-            .style.apply(style_rows, axis=1)
-            .format({"Qty On Hand": "{:.0f}"}),
-            use_container_width=True,
-            hide_index=True
-        )
+    def set_risky():
+        st.session_state.alert_filter_state = 'risky' if st.session_state.alert_filter_state != 'risky' else 'all'
+
+
+    def set_stockout():
+        st.session_state.alert_filter_state = 'stockout' if st.session_state.alert_filter_state != 'stockout' else 'all'
+
+
+    # BUTON SÜTUNLARI
+    b1, b2, b3 = st.columns(3)
+
+    # CSS'deki sınıfları tetiklemek için butonların sırası önemli
+    # Buton etiketlerini (Label) oluştur
+    label_red = f"🔴 Kritik Stok (<6 Ay)\n\n{len(red_risk)}"
+    label_orange = f"🟠 Riskli Stok (6-12 Ay)\n\n{orange_risk}"
+    label_gray = f"📉 Stock Out\n\n{stock_out_count}"
+
+    # Butonları çiz (Her biri kendi state fonksiyonunu çağırır)
+    # type="primary" veya "secondary" yerine kendi CSS'imizi kullanacağız.
+    # Bu yüzden sadece oluşturuyoruz. CSS 'div button' seçicisiyle bunları boyayacak.
+    # CSS'de :nth-of-type(1) -> Kırmızı, (2) -> Turuncu, (3) -> Gri ayarlandı.
+
+    # Butonlara özel CSS class vermek için key veya args kullanamıyoruz, Streamlit DOM yapısına göre CSS yazdım.
+    # Ancak butonların içinde bulunduğu kolonlara özel stil atamak gerekebilir.
+    # Yukarıdaki CSS, bu kolonların içindeki İLK butonları hedefliyor.
+
+    # Kırmızı Buton
+    if b1.button(label_red, use_container_width=True, on_click=set_critical, key="btn_crit"): pass
+    # Turuncu Buton
+    if b2.button(label_orange, use_container_width=True, on_click=set_risky, key="btn_risk"): pass
+    # Gri Buton
+    if b3.button(label_gray, use_container_width=True, on_click=set_stockout, key="btn_out"): pass
+
+    # Butonlara stil uygulamak için JavaScript trick veya sadece global CSS yeterli
+    # Yukarıdaki CSS: div[data-testid="column"]:nth-of-type(1) button
+    # Bu seçici çalışacaktır.
+
+    st.markdown("---")
+
+    # --- TABLO GÖSTERİM MANTIĞI ---
+    current_filter = st.session_state.alert_filter_state
+
+    col_head, col_dl = st.columns([6, 1])
+
+    display_df = pd.DataFrame()
+    title_text = "Risk Analiz Tablosu (Tümü)"
+
+    if current_filter == 'critical':
+        display_df = red_risk
+        title_text = "🔴 Kritik Stok Listesi (<6 Ay)"
+        st.info("Filtre Aktif: Sadece **Kritik Stoklar** gösteriliyor. (Tümünü görmek için butona tekrar basın)")
+    elif current_filter == 'risky':
+        display_df = f_stok[f_stok['Risk Durumu'] == "🟠 Riskli (6-12 Ay)"]
+        title_text = "🟠 Riskli Stok Listesi (6-12 Ay)"
+        st.info("Filtre Aktif: Sadece **Riskli Stoklar** gösteriliyor. (Tümünü görmek için butona tekrar basın)")
+    elif current_filter == 'stockout':
+        display_df = f_out
+        title_text = "📉 Stock Out Listesi"
+        st.info("Filtre Aktif: Sadece **Stock Out** ürünleri gösteriliyor. (Tümünü görmek için butona tekrar basın)")
     else:
-        st.info("Veri yok.")
+        # Varsayılan: Stok tablosunu SKT'ye göre sırala
+        display_df = f_stok.sort_values("Days_To_Expire") if not f_stok.empty else pd.DataFrame()
+        title_text = "🕵️‍♂️ Risk Analiz Tablosu (Tümü)"
+
+    with col_head:
+        st.markdown(f"##### {title_text}")
+
+    with col_dl:
+        if not display_df.empty:
+            st.download_button("📥 Raporu İndir", data=convert_df_single(display_df),
+                               file_name=f"{current_filter}_Rapor.xlsx")
+
+    # Tabloyu Çiz
+    if not display_df.empty:
+        # Eğer Stock Out listesiyse renk kuralı uygulama (Çünkü Risk Durumu sütunu yok)
+        if current_filter == 'stockout':
+            st.dataframe(display_df, use_container_width=True, hide_index=True)
+        else:
+            # Risk Durumu olanlar için renklendirme
+            def style_rows(row):
+                if 'Risk Durumu' in row:
+                    val = str(row['Risk Durumu'])
+                    if "🔴" in val:
+                        return ['background-color: #ffebee; color: #b71c1c'] * len(row)
+                    elif "🟠" in val:
+                        return ['background-color: #fff3e0; color: #e65100'] * len(row)
+                    elif "🟢" in val:
+                        return ['background-color: #e8f5e9; color: #1b5e20'] * len(row)
+                return [''] * len(row)
+
+
+            # Gösterilecek sütunları ayarla
+            all_cols = display_df.columns.tolist()
+            # Öncelikli sütunlar
+            priority = ["Item No", "Location", "Qty On Hand", "Expire Date", "Risk Durumu", "Franchise Description"]
+            final_cols = [c for c in priority if c in all_cols] + [c for c in all_cols if c not in priority]
+
+            # Formatlama (Qty on Hand basamaksız)
+            st.dataframe(
+                display_df[final_cols].style.apply(style_rows, axis=1).format({"Qty On Hand": "{:.0f}"}),
+                use_container_width=True,
+                hide_index=True
+            )
+    else:
+        st.warning("Bu kategoride veri bulunamadı.")
