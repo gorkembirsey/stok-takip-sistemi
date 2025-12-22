@@ -11,12 +11,12 @@ st.set_page_config(page_title="Stock Control Intelligence", layout="wide", page_
 
 DATA_FILE_PATH = "master_stryker_data.xlsx"
 
-# --- CSS (RENKLİ KUTUCUKLARI ZORLA GETİREN KOD) ---
+# --- CSS (ESKİ RENKLİ GÖRÜNÜMÜ BUTONLARA ZORLA UYGULAYAN KOD) ---
 st.markdown("""
     <style>
         .stApp {background-color: #F4F6F9;}
 
-        /* KPI Kartları */
+        /* KPI Kartları (Sarı Kenarlı) */
         div[data-testid="stMetric"] {
             background-color: #ffffff !important; 
             border: 1px solid #e0e0e0; 
@@ -29,73 +29,72 @@ st.markdown("""
         thead th {background-color: #f0f2f6 !important; color: #31333F !important; font-size: 14px !important;}
         .stTabs [aria-selected="true"] {border-bottom: 3px solid #FFC107 !important;}
 
-        /* İndirme Butonu (Yeşil) */
+        /* Sidebar ve İndirme Butonları */
         .stDownloadButton button {border: 1px solid #28a745 !important; color: #28a745 !important;}
-
-        /* Form Butonu (Sarı) */
         div[data-testid="stForm"] button {background-color: #FFC107 !important; color: black !important; border: none !important;}
 
-        /* --- ALERT CENTER RENKLİ BUTONLAR (ZORUNLU STİL) --- */
+        /* --- ALERT CENTER RENKLİ BUTONLAR (ANA EKRAN) --- */
+        /* Bu kodlar ana ekrandaki butonları senin sevdiğin kutucuklara dönüştürür */
 
         /* 1. Buton: KIRMIZI (Kritik) */
-        /* Bu seçici, ana ekrandaki 3'lü kolonun ilkindeki butonu hedefler */
-        div[data-testid="column"]:nth-of-type(1) div[data-testid="stButton"] button {
+        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(1) div[data-testid="stButton"] button {
             background-color: #d32f2f !important;
             color: white !important;
             border: none !important;
+            border-left: 8px solid #b71c1c !important; /* Sol kenar çizgisi geri geldi */
             border-radius: 8px !important;
             padding: 15px 0px !important;
-            height: 100px !important;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important;
+            height: 110px !important; /* Yükseklik sabitlendi */
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
+            white-space: pre-wrap !important; /* Alt satıra geçmeye izin ver */
         }
-        div[data-testid="column"]:nth-of-type(1) div[data-testid="stButton"] button p {
-            color: white !important;
-            font-size: 20px !important;
-            font-weight: bold !important;
-        }
-        div[data-testid="column"]:nth-of-type(1) div[data-testid="stButton"] button:hover {
-            background-color: #b71c1c !important;
+        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(1) div[data-testid="stButton"] button:hover {
+            background-color: #c62828 !important;
             transform: scale(1.02);
+            border-color: #b71c1c !important;
         }
 
         /* 2. Buton: TURUNCU (Riskli) */
-        div[data-testid="column"]:nth-of-type(2) div[data-testid="stButton"] button {
+        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(2) div[data-testid="stButton"] button {
             background-color: #f57c00 !important;
             color: white !important;
             border: none !important;
+            border-left: 8px solid #e65100 !important;
             border-radius: 8px !important;
             padding: 15px 0px !important;
-            height: 100px !important;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important;
+            height: 110px !important;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
+            white-space: pre-wrap !important;
         }
-        div[data-testid="column"]:nth-of-type(2) div[data-testid="stButton"] button p {
-            color: white !important;
-            font-size: 20px !important;
-            font-weight: bold !important;
-        }
-        div[data-testid="column"]:nth-of-type(2) div[data-testid="stButton"] button:hover {
-            background-color: #e65100 !important;
+        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(2) div[data-testid="stButton"] button:hover {
+            background-color: #ef6c00 !important;
             transform: scale(1.02);
+            border-color: #e65100 !important;
         }
 
         /* 3. Buton: GRİ (Stock Out) */
-        div[data-testid="column"]:nth-of-type(3) div[data-testid="stButton"] button {
+        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(3) div[data-testid="stButton"] button {
             background-color: #616161 !important;
             color: white !important;
             border: none !important;
+            border-left: 8px solid #212121 !important;
             border-radius: 8px !important;
             padding: 15px 0px !important;
-            height: 100px !important;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important;
+            height: 110px !important;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
+            white-space: pre-wrap !important;
         }
-        div[data-testid="column"]:nth-of-type(3) div[data-testid="stButton"] button p {
-            color: white !important;
-            font-size: 20px !important;
-            font-weight: bold !important;
-        }
-        div[data-testid="column"]:nth-of-type(3) div[data-testid="stButton"] button:hover {
+        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(3) div[data-testid="stButton"] button:hover {
             background-color: #424242 !important;
             transform: scale(1.02);
+            border-color: #212121 !important;
+        }
+
+        /* Buton içindeki yazı tiplerini ayarlama (Başlık ve Sayı) */
+        div[data-testid="stButton"] button p {
+            font-size: 20px !important;
+            line-height: 1.5 !important;
+            font-weight: bold !important;
         }
 
     </style>
@@ -427,17 +426,19 @@ with tab_alert:
 
     b1, b2, b3 = st.columns(3)
 
+    # BUTON İÇERİĞİ (Yazı Üstte, Rakam Altta) - Image 3 gibi
     label_red = f"Kritik Stok (<6 Ay)\n\n{len(red_risk)}"
     label_orange = f"Riskli Stok (6-12 Ay)\n\n{orange_risk}"
     label_gray = f"Stock Out\n\n{stock_out_count}"
 
-    # RENKLİ BUTONLAR (CSS ile zorlanmış stil)
+    # RENKLİ BUTONLAR
     if b1.button(label_red, use_container_width=True, on_click=set_critical, key="btn_crit"): pass
     if b2.button(label_orange, use_container_width=True, on_click=set_risky, key="btn_risk"): pass
     if b3.button(label_gray, use_container_width=True, on_click=set_stockout, key="btn_out"): pass
 
     st.markdown("---")
 
+    # --- TABLO MANTIĞI ---
     current_filter = st.session_state.alert_filter_state
 
     display_df = pd.DataFrame()
