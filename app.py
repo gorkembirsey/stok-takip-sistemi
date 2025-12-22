@@ -4,6 +4,7 @@ import altair as alt
 from io import BytesIO
 import datetime
 import os
+import zipfile
 import time
 
 # --- SAYFA YAPILANDIRMASI ---
@@ -11,206 +12,136 @@ st.set_page_config(page_title="Stock Control Intelligence", layout="wide", page_
 
 DATA_FILE_PATH = "master_stryker_data.xlsx"
 
-# --- CSS (RENKLİ BUTONLAR VE TABLO DÜZENİ) ---
+# --- CSS (SENİN ATTIĞIN, ÇALIŞAN REFERANS KOD) ---
 st.markdown("""
     <style>
         .stApp {background-color: #F4F6F9;}
 
-        /* 1. KPI KARTLARI (BEYAZ KUTU + SARI ŞERİT) */
+        /* KPI KARTLARI (Ana Sayfa) */
         div[data-testid="stMetric"] {
             background-color: #ffffff !important; 
-            border: 1px solid #e0e0e0 !important; 
-            border-left: 8px solid #FFC107 !important; 
-            padding: 15px !important; 
-            border-radius: 8px !important;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
+            border: 1px solid #e0e0e0; 
+            border-left: 6px solid #FFC107 !important; 
+            padding: 10px; 
+            border-radius: 6px;
         }
-        div[data-testid="stMetric"] label { color: #444 !important; font-weight: 600 !important; }
-        div[data-testid="stMetric"] div[data-testid="stMetricValue"] { color: #000 !important; font-weight: 700 !important; }
 
-        /* 2. ALERT CENTER BUTONLARI (AGRESİF RENKLENDİRME) */
+        /* TABLO BAŞLIKLARI */
+        thead th {
+            background-color: #f0f2f6 !important; 
+            color: #31333F !important; 
+            font-size: 14px !important; 
+            font-weight: 600 !important; 
+            border-bottom: 2px solid #e0e0e0 !important;
+        }
+        tbody tr:nth-of-type(even) {background-color: #f9f9f9;}
 
-        /* KIRMIZI BUTON */
-        div[data-testid="column"]:nth-of-type(1) .stButton button {
+        /* SEKMELER */
+        .stTabs [data-baseweb="tab-list"] {gap: 8px;}
+        .stTabs [data-baseweb="tab"] {
+            height: 40px; 
+            background-color: white; 
+            border-radius: 4px; 
+            font-weight: 600; 
+            border: 1px solid #ddd;
+        }
+        .stTabs [aria-selected="true"] {
+            background-color: #fff !important; 
+            color: #000 !important; 
+            border-bottom: 3px solid #FFC107 !important;
+        }
+
+        /* SIDEBAR BUTONLARI */
+        .stDownloadButton button {width: 100%; border: 1px solid #28a745; color: #28a745;}
+        div[data-testid="stForm"] button {width: 100%; background-color: #FFC107; color: black; font-weight: bold; border: none;}
+        button[kind="secondary"] {width: 100%;}
+
+        /* --- ALERT CENTER RENKLİ BUTONLAR (ANA EKRAN) --- */
+
+        /* 1. Buton: KIRMIZI (Kritik) */
+        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(1) div[data-testid="stButton"] button {
             background-color: #d32f2f !important;
             color: white !important;
             border: none !important;
-            border-left: 10px solid #b71c1c !important;
             border-radius: 8px !important;
-            height: 100px !important;
+            padding: 20px 0px !important;
+            font-size: 20px !important;
+            font-weight: 700 !important;
             box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important;
+            height: 100px !important;
+            transition: all 0.2s ease-in-out;
         }
-        div[data-testid="column"]:nth-of-type(1) .stButton button:hover {
-            background-color: #c62828 !important; transform: scale(1.02);
-        }
-        div[data-testid="column"]:nth-of-type(1) .stButton button p {
-            color: white !important; font-size: 24px !important; font-weight: 800 !important;
+        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(1) div[data-testid="stButton"] button:hover {
+            background-color: #b71c1c !important;
+            transform: scale(1.02);
         }
 
-        /* TURUNCU BUTON */
-        div[data-testid="column"]:nth-of-type(2) .stButton button {
+        /* 2. Buton: TURUNCU (Riskli) */
+        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(2) div[data-testid="stButton"] button {
             background-color: #f57c00 !important;
             color: white !important;
             border: none !important;
-            border-left: 10px solid #e65100 !important;
             border-radius: 8px !important;
-            height: 100px !important;
+            padding: 20px 0px !important;
+            font-size: 20px !important;
+            font-weight: 700 !important;
             box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important;
+            height: 100px !important;
+            transition: all 0.2s ease-in-out;
         }
-        div[data-testid="column"]:nth-of-type(2) .stButton button:hover {
-            background-color: #ef6c00 !important; transform: scale(1.02);
-        }
-        div[data-testid="column"]:nth-of-type(2) .stButton button p {
-            color: white !important; font-size: 24px !important; font-weight: 800 !important;
+        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(2) div[data-testid="stButton"] button:hover {
+            background-color: #e65100 !important;
+            transform: scale(1.02);
         }
 
-        /* GRİ BUTON */
-        div[data-testid="column"]:nth-of-type(3) .stButton button {
+        /* 3. Buton: GRİ (Stock Out) */
+        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(3) div[data-testid="stButton"] button {
             background-color: #616161 !important;
             color: white !important;
             border: none !important;
-            border-left: 10px solid #212121 !important;
             border-radius: 8px !important;
-            height: 100px !important;
+            padding: 20px 0px !important;
+            font-size: 20px !important;
+            font-weight: 700 !important;
             box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important;
+            height: 100px !important;
+            transition: all 0.2s ease-in-out;
         }
-        div[data-testid="column"]:nth-of-type(3) .stButton button:hover {
-            background-color: #424242 !important; transform: scale(1.02);
-        }
-        div[data-testid="column"]:nth-of-type(3) .stButton button p {
-            color: white !important; font-size: 24px !important; font-weight: 800 !important;
+        section[data-testid="stMain"] div[data-testid="column"]:nth-of-type(3) div[data-testid="stButton"] button:hover {
+            background-color: #424242 !important;
+            transform: scale(1.02);
         }
 
-        /* 3. DİĞER AYARLAR */
-        thead th {background-color: #f0f2f6 !important; color: #31333F !important; font-size: 14px !important;}
-        .stTabs [aria-selected="true"] {border-bottom: 3px solid #FFC107 !important;}
-
-        /* İndirme Butonu (Küçük Yeşil) */
-        .stDownloadButton button {
-            border: 1px solid #28a745 !important; 
-            color: #28a745 !important; 
-            background-color: white !important;
-            font-size: 14px !important;
-            padding: 5px 15px !important;
-            height: auto !important;
+        /* Satır içi metin düzeni */
+        div[data-testid="stButton"] button p {
+            font-size: 24px !important;
         }
-        div[data-testid="stForm"] button {background-color: #FFC107 !important; color: black !important; border: none !important;}
+
     </style>
 """, unsafe_allow_html=True)
 
+# --- SESSION STATE ---
 if 'alert_filter_state' not in st.session_state:
     st.session_state.alert_filter_state = 'all'
 
 
-# --- VERİ İŞLEME ---
+# --- CACHE VE VERİ İŞLEME ---
 @st.cache_data(show_spinner=False)
-def load_and_process_data(file_path, mtime):
+def load_excel_data(file_path, mtime):
     try:
         xls = pd.read_excel(file_path, sheet_name=None)
-        sheets = {k.strip(): v for k, v in xls.items()}
-        today = datetime.datetime.now()
-
-        def clean_df(df):
-            if df.empty: return df
-            df.columns = df.columns.str.strip()
-            cols_map = {}
-            for c in df.columns:
-                if c in ['Item Number', 'Material', 'Item Code', 'Ordered Item Number']:
-                    cols_map[c] = 'Item No'
-            if cols_map: df.rename(columns=cols_map, inplace=True)
-            if 'Item No' in df.columns: df['Item No'] = df['Item No'].astype(str).str.strip()
-            return df
-
-        def date_fmt(df, cols):
-            for col in cols:
-                if col in df.columns:
-                    df[col] = pd.to_datetime(df[col], errors='coerce')
-                    df[col] = df[col].dt.strftime('%d.%m.%Y').fillna('')
-            return df
-
-        # --- SEKMELER ---
-        df_gen = sheets.get("General", pd.DataFrame())
-        df_gen = clean_df(df_gen)
-
-        item_franchise_map = {}
-        if not df_gen.empty and 'Franchise Description' in df_gen.columns and 'Item No' in df_gen.columns:
-            temp_map = df_gen[['Item No', 'Franchise Description']].drop_duplicates(subset=['Item No'])
-            item_franchise_map = dict(zip(temp_map['Item No'], temp_map['Franchise Description']))
-
-        df_out = sheets.get("Stock Out", pd.DataFrame())
-        df_out = clean_df(df_out)
-        if not df_out.empty:
-            if 'Franchise Description' not in df_out.columns and 'Item No' in df_out.columns:
-                df_out['Franchise Description'] = df_out['Item No'].map(item_franchise_map)
-
-        df_venlo = sheets.get("Venlo Orders", pd.DataFrame())
-        df_venlo = clean_df(df_venlo)
-        if not df_venlo.empty:
-            if 'Franchise Description' not in df_venlo.columns and 'Item No' in df_venlo.columns:
-                df_venlo['Franchise Description'] = df_venlo['Item No'].map(item_franchise_map)
-            df_venlo = date_fmt(df_venlo, ['Line Creation Date', 'ETA', 'Request Date', 'Line Promise Date'])
-
-        df_yolda = sheets.get("Yoldaki İthalatlar", pd.DataFrame())
-        df_yolda = clean_df(df_yolda)
-        if not df_yolda.empty:
-            if 'Franchise Description' not in df_yolda.columns and 'Item No' in df_yolda.columns:
-                df_yolda['Franchise Description'] = df_yolda['Item No'].map(item_franchise_map)
-            df_yolda = date_fmt(df_yolda, ['Shipment Date', 'ETA'])
-
-        df_konsinye = sheets.get("Konsinye Stok Raporu", pd.DataFrame())
-        df_konsinye = clean_df(df_konsinye)
-        if not df_konsinye.empty:
-            if 'Franchise Description' not in df_konsinye.columns and 'Item No' in df_konsinye.columns:
-                df_konsinye['Franchise Description'] = df_konsinye['Item No'].map(item_franchise_map)
-            if 'Expire Date' in df_konsinye.columns:
-                df_konsinye['Expire Date'] = pd.to_datetime(df_konsinye['Expire Date'], errors='coerce').dt.strftime(
-                    '%d.%m.%Y').fillna('')
-
-        df_stok = sheets.get("Stok", pd.DataFrame())
-        df_stok = clean_df(df_stok)
-        if not df_stok.empty:
-            if 'Franchise Description' not in df_stok.columns and 'Item No' in df_stok.columns:
-                df_stok['Franchise Description'] = df_stok['Item No'].map(item_franchise_map)
-
-            # ADET (Sayıya çevir, 0'la doldur)
-            if 'Qty On Hand' in df_stok.columns:
-                df_stok['Qty On Hand'] = pd.to_numeric(df_stok['Qty On Hand'], errors='coerce').fillna(0)
-
-            # SITE (Tam sayı yap, stringe çevir, .0 at)
-            if 'Site' in df_stok.columns:
-                df_stok['Site'] = pd.to_numeric(df_stok['Site'], errors='coerce').fillna(0).astype(int).astype(
-                    str).replace('0', '')
-
-            if 'Expire' in df_stok.columns:
-                df_stok['Expire_Obj'] = pd.to_datetime(df_stok['Expire'], errors='coerce')
-                df_stok['Days_To_Expire'] = (df_stok['Expire_Obj'] - today).dt.days
-                df_stok['Expire Date'] = df_stok['Expire_Obj'].dt.strftime('%d.%m.%Y').fillna('')
-
-                def calc_risk(d):
-                    if pd.isna(d): return "⚪ Bilinmiyor"
-                    if d < 180:
-                        return "🔴 Kritik (<6 Ay)"
-                    elif d < 365:
-                        return "🟠 Riskli (6-12 Ay)"
-                    elif d >= 365:
-                        return "🟢 Güvenli (>12 Ay)"
-                    return "⚪ Bilinmiyor"
-
-                df_stok['Risk Durumu'] = df_stok['Days_To_Expire'].apply(calc_risk)
-            else:
-                df_stok['Risk Durumu'] = "⚪ Tarih Yok"
-                df_stok['Expire Date'] = ""
-
-        all_franchises = sorted([x for x in list(set(item_franchise_map.values())) if str(x) != 'nan'])
-
-        return {
-            "General": df_gen, "Stok": df_stok, "Venlo": df_venlo,
-            "Yolda": df_yolda, "Out": df_out, "Konsinye": df_konsinye,
-            "Franchises": all_franchises
-        }
-
+        return {k.strip(): v for k, v in xls.items()}
     except Exception as e:
         return None
+
+
+# --- FORMATLAYICI ---
+def format_turkish_date(df, columns):
+    for col in columns:
+        if col in df.columns:
+            df[col] = pd.to_datetime(df[col], errors='coerce')
+            df[col] = df[col].dt.strftime('%d.%m.%Y').fillna('')
+    return df
 
 
 # --- İNDİRME ---
@@ -218,10 +149,11 @@ def convert_full_report(dfs_dict):
     output = BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         for sheet_name, df in dfs_dict.items():
-            if isinstance(df, pd.DataFrame) and not df.empty:
+            if not df.empty:
                 cols_drop = ['Expire_Obj', 'Days_To_Expire', 'Expire']
                 temp_df = df.drop(columns=[c for c in cols_drop if c in df.columns], errors='ignore')
-                temp_df.to_excel(writer, sheet_name=sheet_name[:30], index=False)
+                safe_name = sheet_name[:30]
+                temp_df.to_excel(writer, sheet_name=safe_name, index=False)
     return output.getvalue()
 
 
@@ -234,6 +166,7 @@ def convert_df_single(df):
     return output.getvalue()
 
 
+# --- RESET ---
 def reset_filters():
     st.session_state.franchise_key = []
     st.session_state.dynamic_val_key = []
@@ -246,6 +179,7 @@ with st.sidebar:
     st.image(
         "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Stryker_Corporation_logo.svg/2560px-Stryker_Corporation_logo.svg.png",
         width=150)
+
     with st.expander("🔒 Yönetici Girişi"):
         password = st.text_input("Şifre", type="password")
         if password == "stryker2025":
@@ -255,42 +189,124 @@ with st.sidebar:
                     f.write(uploaded_file.getbuffer())
                     f.flush()
                     os.fsync(f.fileno())
-                load_and_process_data.clear()
-                st.toast("Veri Başarıyla Güncellendi!")
+                load_excel_data.clear()
+                st.toast("Veri Güncellendi!")
                 time.sleep(1)
                 st.rerun()
     st.markdown("---")
 
-# --- VERİ YÜKLEME ---
-processed_data = {}
+# --- DATA CHECK ---
+sheets = {}
 if os.path.exists(DATA_FILE_PATH):
     mtime = os.path.getmtime(DATA_FILE_PATH)
     mod_time = datetime.datetime.fromtimestamp(mtime).strftime('%d.%m.%Y %H:%M')
     st.sidebar.caption(f"📅 Veri Tarihi: {mod_time}")
 
-    data_bundle = load_and_process_data(DATA_FILE_PATH, mtime)
-    if data_bundle is None:
-        st.error("⚠️ Dosya okunamadı. Lütfen yönetici panelinden dosyayı tekrar yükleyin.")
+    loaded_data = load_excel_data(DATA_FILE_PATH, mtime)
+    if loaded_data is None:
+        st.error("⚠️ Dosya okunamadı. Lütfen yönetici panelinden tekrar yükleyiniz.")
+        try:
+            os.remove(DATA_FILE_PATH); load_excel_data.clear()
+        except:
+            pass
         st.stop()
     else:
-        processed_data = data_bundle
+        sheets = loaded_data
 else:
-    st.info("👋 Sistemde veri yok. Lütfen yönetici girişi yapıp dosya yükleyin.")
+    st.info("Veri yok. Yönetici girişi yapınız.")
     st.stop()
 
-df_gen = processed_data["General"]
-df_stok = processed_data["Stok"]
-df_venlo = processed_data["Venlo"]
-df_yolda = processed_data["Yolda"]
-df_out = processed_data["Out"]
-df_konsinye = processed_data["Konsinye"]
-all_franchises = processed_data["Franchises"]
+# --- VERİ İŞLEME ---
+target_col = 'SS Coverage (W/O Consignment)'
+today = datetime.datetime.now()
 
-# --- FİLTRE PANELİ ---
+
+# Helper
+def clean_cols(df):
+    if df.empty: return df
+    df.columns = df.columns.str.strip()
+    cols_map = {}
+    for c in df.columns:
+        if c in ['Item Number', 'Material', 'Item Code', 'Ordered Item Number']:
+            cols_map[c] = 'Item No'
+    if cols_map: df.rename(columns=cols_map, inplace=True)
+    if 'Item No' in df.columns: df['Item No'] = df['Item No'].astype(str).str.strip()
+    return df
+
+
+# 1. GENERAL
+df_gen = sheets.get("General", pd.DataFrame())
+df_gen = clean_cols(df_gen)
+
+item_franchise_map = {}
+if not df_gen.empty and 'Franchise Description' in df_gen.columns:
+    temp_map = df_gen[['Item No', 'Franchise Description']].drop_duplicates(subset=['Item No'])
+    item_franchise_map = dict(zip(temp_map['Item No'], temp_map['Franchise Description']))
+
+
+def process_df(sheet_name):
+    df = sheets.get(sheet_name, pd.DataFrame())
+    df = clean_cols(df)
+    if not df.empty and 'Franchise Description' not in df.columns and 'Item No' in df.columns:
+        df['Franchise Description'] = df['Item No'].map(item_franchise_map)
+    return df
+
+
+# 2. STOCK OUT
+df_out = process_df("Stock Out")
+
+# 3. VENLO
+df_venlo = process_df("Venlo Orders")
+df_venlo = format_turkish_date(df_venlo, ['Line Creation Date', 'ETA', 'Request Date', 'Line Promise Date'])
+
+# 4. YOLDAKİ
+df_yolda = process_df("Yoldaki İthalatlar")
+df_yolda = format_turkish_date(df_yolda, ['Shipment Date', 'ETA'])
+
+# 5. KONSİNYE
+df_konsinye = process_df("Konsinye Stok Raporu")
+if 'Expire Date' in df_konsinye.columns:
+    df_konsinye['Expire Date'] = pd.to_datetime(df_konsinye['Expire Date'], errors='coerce').dt.strftime(
+        '%d.%m.%Y').fillna('')
+
+# 6. STOK
+df_stok = process_df("Stok")
+if not df_stok.empty:
+    if 'Qty On Hand' in df_stok.columns:
+        df_stok['Qty On Hand'] = pd.to_numeric(df_stok['Qty On Hand'], errors='coerce').fillna(0)
+
+    if 'Site' in df_stok.columns:
+        df_stok['Site'] = pd.to_numeric(df_stok['Site'], errors='coerce').fillna(0).astype(int).astype(str).replace('0',
+                                                                                                                    '')
+
+    if 'Expire' in df_stok.columns:
+        df_stok['Expire_Obj'] = pd.to_datetime(df_stok['Expire'], errors='coerce')
+        df_stok['Days_To_Expire'] = (df_stok['Expire_Obj'] - today).dt.days
+        df_stok['Expire Date'] = df_stok['Expire_Obj'].dt.strftime('%d.%m.%Y').fillna('')
+
+
+        def calc_risk(d):
+            if pd.isna(d): return "⚪ Bilinmiyor"
+            if d < 180:
+                return "🔴 Kritik (<6 Ay)"
+            elif d < 365:
+                return "🟠 Riskli (6-12 Ay)"
+            elif d >= 365:
+                return "🟢 Güvenli (>12 Ay)"
+            return "⚪ Bilinmiyor"
+
+
+        df_stok['Risk Durumu'] = df_stok['Days_To_Expire'].apply(calc_risk)
+    else:
+        df_stok['Risk Durumu'] = "⚪ Tarih Yok"
+        df_stok['Expire Date'] = ""
+
+# --- SIDEBAR FİLTRE ---
 st.sidebar.header("🎯 Filtre Paneli")
 st.sidebar.button("Filtreleri Temizle", on_click=reset_filters, type="secondary")
 
 with st.sidebar.form("filter_form"):
+    all_franchises = sorted([x for x in list(set(item_franchise_map.values())) if str(x) != 'nan'])
     selected_franchises = st.multiselect("İş Birimi (Franchise):", options=all_franchises, placeholder="Tümü",
                                          key="franchise_key")
     st.markdown("---")
@@ -332,6 +348,7 @@ f_yolda = fast_filter(df_yolda)
 f_out = fast_filter(df_out)
 f_konsinye = fast_filter(df_konsinye)
 
+# --- İNDİRME ---
 st.sidebar.markdown("---")
 if not f_stok.empty or not f_gen.empty:
     full_data = {"General": f_gen, "Stok": f_stok, "Venlo": f_venlo, "Yolda": f_yolda, "Stock Out": f_out,
@@ -341,7 +358,8 @@ if not f_stok.empty or not f_gen.empty:
 
 # --- DASHBOARD ---
 st.title("Stock Control Intelligence")
-if submitted: st.info("✅ Filtreler Uygulandı")
+if submitted:
+    st.info("✅ Filtreler Uygulandı")
 
 c1, c2, c3, c4 = st.columns(4)
 c1.metric("📦 Toplam Stok", f"{f_stok['Qty On Hand'].sum() if not f_stok.empty else 0:,.0f}")
@@ -356,7 +374,6 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab_alert = st.tabs([
     "🔔 Alert Center"
 ])
 
-# 1. GENERAL
 with tab1:
     if not f_gen.empty:
         st.dataframe(f_gen, use_container_width=True, hide_index=True,
@@ -364,7 +381,6 @@ with tab1:
     else:
         st.info("Veri yok.")
 
-# 2. STOK (Depo) - Temiz Liste
 with tab2:
     if not f_stok.empty:
         c1, c2 = st.columns([1, 1])
@@ -398,7 +414,6 @@ with tab4:
     else:
         st.info("Veri yok.")
 
-# 5. STOCK OUT
 with tab5:
     if not f_out.empty:
         st.dataframe(f_out, use_container_width=True, hide_index=True,
@@ -406,14 +421,12 @@ with tab5:
     else:
         st.success("Sorun yok.")
 
-# 6. KONSİNYE
 with tab6:
     if not f_konsinye.empty:
         st.dataframe(f_konsinye, use_container_width=True, hide_index=True)
     else:
         st.info("Konsinye verisi yok.")
 
-# 7. ALERT CENTER (SIRALAMA DÜZELTİLDİ + RENKLER)
 with tab_alert:
     st.markdown("#### ⚠️ Operasyonel Risk Paneli")
 
@@ -435,16 +448,17 @@ with tab_alert:
 
 
     b1, b2, b3 = st.columns(3)
+
     label_red = f"Kritik Stok (<6 Ay)\n\n{len(red_risk)}"
     label_orange = f"Riskli Stok (6-12 Ay)\n\n{orange_risk}"
     label_gray = f"Stock Out\n\n{stock_out_count}"
 
     with b1:
-        st.button(label_red, use_container_width=True, on_click=set_critical, key="btn_red")
+        st.button(label_red, use_container_width=True, on_click=set_critical, key="btn_crit")
     with b2:
-        st.button(label_orange, use_container_width=True, on_click=set_risky, key="btn_orange")
+        st.button(label_orange, use_container_width=True, on_click=set_risky, key="btn_risk")
     with b3:
-        st.button(label_gray, use_container_width=True, on_click=set_stockout, key="btn_gray")
+        st.button(label_gray, use_container_width=True, on_click=set_stockout, key="btn_out")
 
     st.markdown("---")
 
@@ -501,7 +515,6 @@ with tab_alert:
                 return [''] * len(row)
 
 
-            # Adet Tam Sayı
             st.dataframe(
                 final_df_view.style.apply(style_rows, axis=1).format({"Qty On Hand": "{:.0f}"}),
                 use_container_width=True,
