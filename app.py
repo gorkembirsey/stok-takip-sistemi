@@ -11,126 +11,85 @@ st.set_page_config(page_title="Stock Control Intelligence", layout="wide", page_
 
 DATA_FILE_PATH = "master_stryker_data.xlsx"
 
-# --- CSS (RENKLERİ ZORLA UYGULAYAN "NÜKLEER" KOD) ---
+# --- CSS (RENKLERİ ZORLA UYGULAYAN KESİN KOD) ---
 st.markdown("""
     <style>
         .stApp {background-color: #F4F6F9;}
 
-        /* 1. KPI KARTLARI (ÜSTTEKİ 4 KUTU) - BEYAZ KUTU + SARI ÇİZGİ */
+        /* 1. KPI KARTLARI (BEYAZ KUTU + SARI ŞERİT) */
         div[data-testid="stMetric"] {
             background-color: #ffffff !important; 
             border: 1px solid #e0e0e0 !important; 
-            border-left: 8px solid #FFC107 !important;
+            border-left: 8px solid #FFC107 !important; 
             padding: 15px !important; 
             border-radius: 8px !important;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
         }
-        div[data-testid="stMetric"] label { color: #444 !important; font-size: 14px !important; }
-        div[data-testid="stMetric"] div[data-testid="stMetricValue"] { color: #000 !important; font-size: 28px !important; }
+        div[data-testid="stMetric"] label { color: #444 !important; font-size: 14px !important; font-weight: 600 !important; }
+        div[data-testid="stMetric"] div[data-testid="stMetricValue"] { color: #000 !important; font-size: 28px !important; font-weight: 700 !important; }
 
-        /* 2. ALERT CENTER RENKLİ BUTONLARI (KESİN ÇÖZÜM) */
-        /* Streamlit'in tüm varsayılan buton stillerini eziyoruz */
+        /* 2. ALERT CENTER BUTONLARI - KESİN ÇÖZÜM */
+        /* Sadece 'stButton' içeren kolonları hedefliyoruz ki KPI'lar bozulmasın */
 
-        /* KIRMIZI BUTON (1. Sütun) */
-        div[data-testid="column"]:nth-of-type(1) button[kind="secondary"] {
+        /* 1. Kolondaki Buton (KIRMIZI) */
+        div[data-testid="column"]:nth-of-type(1) .stButton button {
             background-color: #d32f2f !important;
             color: white !important;
             border: none !important;
-            border-left: 15px solid #b71c1c !important;
-            border-radius: 10px !important;
-            height: 120px !important;
-            box-shadow: 0 5px 15px rgba(211, 47, 47, 0.4) !important;
-            transition: all 0.2s ease-in-out !important;
+            border-left: 12px solid #b71c1c !important;
+            border-radius: 8px !important;
+            height: 110px !important;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important;
         }
-        /* Hover ve Active Durumlarını da Eziyoruz */
-        div[data-testid="column"]:nth-of-type(1) button[kind="secondary"]:hover,
-        div[data-testid="column"]:nth-of-type(1) button[kind="secondary"]:active,
-        div[data-testid="column"]:nth-of-type(1) button[kind="secondary"]:focus {
-            background-color: #b71c1c !important;
-            color: white !important;
-            border-color: #b71c1c !important;
-            box-shadow: inset 0 0 0 9999px rgba(0, 0, 0, 0.1) !important;
-            transform: scale(1.02) !important;
+        div[data-testid="column"]:nth-of-type(1) .stButton button:hover {
+            background-color: #c62828 !important; transform: scale(1.02);
         }
-        /* Buton içindeki yazı rengi */
-        div[data-testid="column"]:nth-of-type(1) button[kind="secondary"] p {
-            color: white !important; font-weight: 900 !important; font-size: 26px !important;
+        div[data-testid="column"]:nth-of-type(1) .stButton button p {
+            color: white !important; font-size: 22px !important; font-weight: 800 !important;
         }
 
-        /* TURUNCU BUTON (2. Sütun) */
-        div[data-testid="column"]:nth-of-type(2) button[kind="secondary"] {
+        /* 2. Kolondaki Buton (TURUNCU) */
+        div[data-testid="column"]:nth-of-type(2) .stButton button {
             background-color: #f57c00 !important;
             color: white !important;
             border: none !important;
-            border-left: 15px solid #e65100 !important;
-            border-radius: 10px !important;
-            height: 120px !important;
-            box-shadow: 0 5px 15px rgba(245, 124, 0, 0.4) !important;
-             transition: all 0.2s ease-in-out !important;
+            border-left: 12px solid #e65100 !important;
+            border-radius: 8px !important;
+            height: 110px !important;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important;
         }
-         div[data-testid="column"]:nth-of-type(2) button[kind="secondary"]:hover,
-         div[data-testid="column"]:nth-of-type(2) button[kind="secondary"]:active,
-         div[data-testid="column"]:nth-of-type(2) button[kind="secondary"]:focus {
-            background-color: #e65100 !important;
-            color: white !important;
-            border-color: #e65100 !important;
-             box-shadow: inset 0 0 0 9999px rgba(0, 0, 0, 0.1) !important;
-            transform: scale(1.02) !important;
+        div[data-testid="column"]:nth-of-type(2) .stButton button:hover {
+            background-color: #ef6c00 !important; transform: scale(1.02);
         }
-        div[data-testid="column"]:nth-of-type(2) button[kind="secondary"] p {
-            color: white !important; font-weight: 900 !important; font-size: 26px !important;
+        div[data-testid="column"]:nth-of-type(2) .stButton button p {
+            color: white !important; font-size: 22px !important; font-weight: 800 !important;
         }
 
-        /* GRİ BUTON (3. Sütun) */
-        div[data-testid="column"]:nth-of-type(3) button[kind="secondary"] {
+        /* 3. Kolondaki Buton (GRİ) */
+        div[data-testid="column"]:nth-of-type(3) .stButton button {
             background-color: #616161 !important;
             color: white !important;
             border: none !important;
-            border-left: 15px solid #212121 !important;
-            border-radius: 10px !important;
-            height: 120px !important;
-            box-shadow: 0 5px 15px rgba(97, 97, 97, 0.4) !important;
-             transition: all 0.2s ease-in-out !important;
+            border-left: 12px solid #212121 !important;
+            border-radius: 8px !important;
+            height: 110px !important;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important;
         }
-        div[data-testid="column"]:nth-of-type(3) button[kind="secondary"]:hover,
-        div[data-testid="column"]:nth-of-type(3) button[kind="secondary"]:active,
-        div[data-testid="column"]:nth-of-type(3) button[kind="secondary"]:focus{
-            background-color: #424242 !important;
-            color: white !important;
-            border-color: #212121 !important;
-            box-shadow: inset 0 0 0 9999px rgba(0, 0, 0, 0.1) !important;
-            transform: scale(1.02) !important;
+        div[data-testid="column"]:nth-of-type(3) .stButton button:hover {
+            background-color: #424242 !important; transform: scale(1.02);
         }
-        div[data-testid="column"]:nth-of-type(3) button[kind="secondary"] p {
-            color: white !important; font-weight: 900 !important; font-size: 26px !important;
+        div[data-testid="column"]:nth-of-type(3) .stButton button p {
+            color: white !important; font-size: 22px !important; font-weight: 800 !important;
         }
 
-        /* 3. DİĞER DÜZELTMELER */
-
-        /* Tablo Başlıkları */
+        /* 3. DİĞER AYARLAR */
         thead th {background-color: #f0f2f6 !important; color: #31333F !important; font-size: 14px !important;}
-
-        /* Sekme Alt Çizgisi */
         .stTabs [aria-selected="true"] {border-bottom: 3px solid #FFC107 !important;}
-
-        /* İndirme Butonu (Küçük Yeşil) */
-        .stDownloadButton > button {
-            border: 1px solid #28a745 !important; 
-            color: #28a745 !important;
-            background-color: white !important;
-            padding: 0.3rem 0.8rem !important;
-            font-size: 14px !important;
-            height: auto !important;
-            min-height: 0px !important;
+        .stDownloadButton button {
+            border: 1px solid #28a745 !important; color: #28a745 !important; background-color: white !important;
+            padding: 5px 15px !important; font-size: 14px !important; height: auto !important;
         }
-        .stDownloadButton > button:hover {
-            background-color: #28a745 !important;
-            color: white !important;
-        }
-
-        /* Sidebar Butonları */
         div[data-testid="stForm"] button {background-color: #FFC107 !important; color: black !important; border: none !important;}
-
     </style>
 """, unsafe_allow_html=True)
 
@@ -139,9 +98,16 @@ if 'alert_filter_state' not in st.session_state:
     st.session_state.alert_filter_state = 'all'
 
 
-# --- VERİ İŞLEME (HATA KORUMALI) ---
+# --- VERİ İŞLEME (ÇÖKME KORUMALI) ---
 @st.cache_data(show_spinner=False)
 def load_and_process_data(file_path, mtime):
+    # Boş şablon (Hata durumunda dönecek)
+    empty_structure = {
+        "General": pd.DataFrame(), "Stok": pd.DataFrame(), "Venlo": pd.DataFrame(),
+        "Yolda": pd.DataFrame(), "Out": pd.DataFrame(), "Konsinye": pd.DataFrame(),
+        "Franchises": []
+    }
+
     try:
         xls = pd.read_excel(file_path, sheet_name=None)
         sheets = {k.strip(): v for k, v in xls.items()}
@@ -165,7 +131,7 @@ def load_and_process_data(file_path, mtime):
                     df[col] = df[col].dt.strftime('%d.%m.%Y').fillna('')
             return df
 
-        # 1. GENERAL
+        # --- SEKMELERİ İŞLE ---
         df_gen = sheets.get("General", pd.DataFrame())
         df_gen = clean_df(df_gen)
 
@@ -174,13 +140,11 @@ def load_and_process_data(file_path, mtime):
             temp_map = df_gen[['Item No', 'Franchise Description']].drop_duplicates(subset=['Item No'])
             item_franchise_map = dict(zip(temp_map['Item No'], temp_map['Franchise Description']))
 
-        # 2. STOCK OUT
         df_out = sheets.get("Stock Out", pd.DataFrame())
         df_out = clean_df(df_out)
         if not df_out.empty and 'Franchise Description' not in df_out.columns and 'Item No' in df_out.columns:
             df_out['Franchise Description'] = df_out['Item No'].map(item_franchise_map)
 
-        # 3. VENLO
         df_venlo = sheets.get("Venlo Orders", pd.DataFrame())
         df_venlo = clean_df(df_venlo)
         if not df_venlo.empty:
@@ -188,7 +152,6 @@ def load_and_process_data(file_path, mtime):
                 df_venlo['Franchise Description'] = df_venlo['Item No'].map(item_franchise_map)
             df_venlo = date_fmt(df_venlo, ['Line Creation Date', 'ETA', 'Request Date', 'Line Promise Date'])
 
-        # 4. YOLDAKİ
         df_yolda = sheets.get("Yoldaki İthalatlar", pd.DataFrame())
         df_yolda = clean_df(df_yolda)
         if not df_yolda.empty:
@@ -196,7 +159,6 @@ def load_and_process_data(file_path, mtime):
                 df_yolda['Franchise Description'] = df_yolda['Item No'].map(item_franchise_map)
             df_yolda = date_fmt(df_yolda, ['Shipment Date', 'ETA'])
 
-        # 5. KONSİNYE
         df_konsinye = sheets.get("Konsinye Stok Raporu", pd.DataFrame())
         df_konsinye = clean_df(df_konsinye)
         if not df_konsinye.empty:
@@ -206,7 +168,6 @@ def load_and_process_data(file_path, mtime):
                 df_konsinye['Expire Date'] = pd.to_datetime(df_konsinye['Expire Date'], errors='coerce').dt.strftime(
                     '%d.%m.%Y').fillna('')
 
-        # 6. STOK
         df_stok = sheets.get("Stok", pd.DataFrame())
         df_stok = clean_df(df_stok)
         if not df_stok.empty:
@@ -249,7 +210,8 @@ def load_and_process_data(file_path, mtime):
         }
 
     except Exception as e:
-        return None
+        # Hata olsa bile boş dataframe dön ki sistem çökmesin
+        return empty_structure
 
 
 # --- İNDİRME ---
@@ -300,22 +262,26 @@ with st.sidebar:
                 st.rerun()
     st.markdown("---")
 
-# --- VERİ YÜKLEME KONTROLÜ ---
-processed_data = {}
+# --- VERİ YÜKLEME ---
+processed_data = None
 if os.path.exists(DATA_FILE_PATH):
     mtime = os.path.getmtime(DATA_FILE_PATH)
     mod_time = datetime.datetime.fromtimestamp(mtime).strftime('%d.%m.%Y %H:%M')
     st.sidebar.caption(f"📅 Veri Tarihi: {mod_time}")
-
-    data_bundle = load_and_process_data(DATA_FILE_PATH, mtime)
-    if data_bundle is None:
-        st.error("⚠️ Dosya okunamadı. Lütfen yönetici panelinden dosyayı tekrar yükleyin.")
-        st.stop()
-    else:
-        processed_data = data_bundle
+    processed_data = load_and_process_data(DATA_FILE_PATH, mtime)
 else:
     st.info("👋 Sistemde veri yok. Lütfen yönetici girişi yapıp dosya yükleyin.")
-    st.stop()
+    # Boş şablon oluştur ki hata vermesin
+    processed_data = load_and_process_data("dummy_path_that_fails", 0)
+
+# Veri Güvenliği: processed_data'nın boş gelmesi durumuna karşı
+if processed_data is None:
+    # Bu durum teorik olarak yakalandı ama yine de
+    processed_data = {
+        "General": pd.DataFrame(), "Stok": pd.DataFrame(), "Venlo": pd.DataFrame(),
+        "Yolda": pd.DataFrame(), "Out": pd.DataFrame(), "Konsinye": pd.DataFrame(),
+        "Franchises": []
+    }
 
 df_gen = processed_data["General"]
 df_stok = processed_data["Stok"]
@@ -384,7 +350,7 @@ if not f_stok.empty or not f_gen.empty:
 st.title("Stock Control Intelligence")
 if submitted: st.info("✅ Filtreler Uygulandı")
 
-# KPI Kartları (Sarı Kenarlı, Beyaz Kutu)
+# KPI KARTLARI (BEYAZ)
 c1, c2, c3, c4 = st.columns(4)
 c1.metric("📦 Toplam Stok", f"{f_stok['Qty On Hand'].sum() if not f_stok.empty else 0:,.0f}")
 c2.metric("🌍 Bekleyen Sipariş", f"{f_venlo['Ordered Qty Order UOM'].sum() if not f_venlo.empty else 0:,.0f}")
@@ -406,7 +372,7 @@ with tab1:
     else:
         st.info("Veri yok.")
 
-# 2. STOK (RISK DURUMU SÜTUNU GİZLİ)
+# 2. STOK (RISK DURUMU YOK)
 with tab2:
     if not f_stok.empty:
         c1, c2 = st.columns([1, 1])
@@ -420,10 +386,8 @@ with tab2:
                 st.altair_chart(chart, use_container_width=True)
         with c2:
             st.markdown("##### 📝 Detaylı Stok Listesi")
-            # Risk Durumu sütununu gizle
             cols_hide = ['Risk Durumu', 'Expire', 'Expire_Obj', 'Days_To_Expire', 'Franchise Description']
             cols_show = [c for c in f_stok.columns if c not in cols_hide]
-            # Adet Tam Sayı Formatı
             st.dataframe(f_stok[cols_show].style.format({"Qty On Hand": "{:.0f}"}), use_container_width=True,
                          hide_index=True)
     else:
@@ -478,12 +442,11 @@ with tab_alert:
 
 
     b1, b2, b3 = st.columns(3)
-    # Etiketler (Alt alta)
+    # Etiketler
     label_red = f"Kritik Stok (<6 Ay)\n\n{len(red_risk)}"
     label_orange = f"Riskli Stok (6-12 Ay)\n\n{orange_risk}"
     label_gray = f"Stock Out\n\n{stock_out_count}"
 
-    # BUTONLAR (CSS İLE RENKLENDİRİLDİ)
     with b1:
         st.button(label_red, use_container_width=True, on_click=set_critical, key="btn_red")
     with b2:
@@ -512,7 +475,6 @@ with tab_alert:
     c_head, c_btn = st.columns([6, 1])
     c_head.markdown(f"##### {title_text}")
     if not display_df.empty:
-        # İndirme Butonu (Küçük Yeşil)
         c_btn.download_button("📥 Raporu İndir", data=convert_df_single(display_df),
                               file_name=f"{current_filter}_Rapor.xlsx")
 
@@ -541,7 +503,6 @@ with tab_alert:
                 return [''] * len(row)
 
 
-            # Adet Tam Sayı Formatı
             st.dataframe(
                 final_df_view.style.apply(style_rows, axis=1).format({"Qty On Hand": "{:.0f}"}),
                 use_container_width=True,
